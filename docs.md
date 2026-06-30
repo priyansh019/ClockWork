@@ -18,11 +18,11 @@ ClockWork is engineered specifically to eliminate these points of friction.
 ---
 
 ## 2. Solution Overview
-ClockWork resolves time-management anxiety by transforming passive checking into an active, conversational AI environment. Adhering to the **Editorial Aesthetic** (inspired by minimalist typographic design, spacious grids, and sophisticated warm/charcoal palettes), the application centers around an intuitive triple-column layout:
+ClockWork resolves time-management anxiety by transforming passive checking into an active, conversational AI environment. Adhering to the **Editorial Aesthetic** (inspired by minimalist typographic design, spacious grids, and sophisticated warm/charcoal palettes), the application organizes features into three dedicated tabs for simplicity and focus:
 
-*   **Left Column (Directives & Advice)**: Adaptive alerts, voice advice triggers, and daily philosophical mental models.
-*   **Center Column (Action Core)**: Dynamic priority rankings, task intake managers, and realistic hour-by-hour scheduling blocks.
-*   **Right Column (Cognitive Workspace & Momentum)**: The **"Mind"** conversational assistant, consistency streak display, and category-coded sticky notes.
+*   **Active Workspace (Home)**: Displays the daily task pipeline, dynamic hour-by-hour time blocks, a gamified momentum streak tracker with a Duolingo-style weekly calendar, and the context-aware companion **"Mind"** chatbot.
+*   **Productivity Analytics**: Features an interactive 7-day visual progress chart built with Recharts comparing completed versus pending tasks, paired with active key-rate metrics.
+*   **Timetable & Importer**: Contains a drag-and-drop file uploader for Excel/CSV schedules alongside manual slot entries, allowing users to synchronize external academic or professional schedules directly into the planner.
 
 ---
 
@@ -52,34 +52,47 @@ Below is the structured data flow showing how the React frontend, Express.js pro
 ```
 
 ### Detailed AI Interaction Loop
-1. **Intake & Sync**: The user performs actions (completes tasks, writes stickies, asks questions). All states are instantly synchronized to client-side `localStorage` to ensure zero data loss on session reload.
-2. **State Bundling**: When the user requests a priority sweep, schedule generation, or queries the **"Mind"** assistant, the client-side packages the entire active workspace (all current tasks, note lists, streak values, and schedule blocks) into a unified JSON context.
-3. **AI Resolution**: The backend receives the context and crafts a sophisticated, custom-crafted prompt for the `gemini-3.5-flash` model, ensuring formatting is strict and matches the ClockWork Editorial tone.
-4. **Instant Update**: The client receives structured JSON or markdown, instantly updating the task lists, comments, schedules, and chat history.
+1. **Onboarding & Category Seeding**: Upon accessing the portal, users sign in and select their role (Student, Work, or Personal). The workspace dynamically triggers custom task pipelines suited to their profile.
+2. **Intake & Sync**: The user performs actions (completes tasks, writes stickies, uploads spreadsheets). All states are instantly synchronized to client-side `localStorage` to ensure zero data loss on session reload.
+3. **State Bundling**: When the user requests a priority sweep, schedule generation, or queries the **"Mind"** assistant, the client-side packages the entire active workspace into a unified JSON context.
+4. **AI Resolution**: The backend receives the context and crafts a sophisticated, custom-crafted prompt for the `gemini-3.5-flash` model, ensuring formatting is strict and matches the ClockWork Editorial tone.
+5. **Instant Update**: The client receives structured JSON or markdown, instantly updating the task lists, comments, schedules, and chat history.
 
 ---
 
 ## 4. Key Features & How AI Helps
 
-### A. Proactive Prioritization
-*   **How it works**: When tasks are added, they are listed in the database. Clicking **"AI Prioritize"** passes the task metadata to Gemini.
-*   **How AI helps**: Instead of sorting alphabetically or by entry time, Gemini evaluates realistic deadline proximities, calculates completion times, ranks the tasks, and appends a motivating, actionable coaching comment (e.g., *"Autonomous planning has reserved 10:00 - 12:00 for deep work"*).
+### A. Categorized Onboarding Portal & Profiles
+*   **How it works**: Users register or sign in using their email, name, unique available username, secure password, and workspace category (Student, Personal, Work). Students register their School/College (e.g. Stanford) and Work users register their Company (e.g. Google).
+*   **How AI helps**: Seeding relevant category-specific daily tasks gives users immediate focus and momentum. The chatbot "Mind" speaks in terms of their role, referencing assignments or corporate sprints based on their dynamic metadata.
 
-### B. Autonomous Hour-by-Hour Time Blocking
-*   **How it works**: Clicking **"Auto-Schedule"** analyzes your active high-priority pipeline.
-*   **How AI helps**: Gemini dynamically crafts an optimized hourly timeline, categorizing slots as **Focus** (demanding deep cognitive focus), **Admin** (quick responses, emails, bill payments), or **Break** (mandatory rest to restore mental reserves), ensuring you don't burn out.
+### B. Recharts Productivity Analytics & Multi-Type Charts
+*   **How it works**: Located under "Productivity Analytics". Visualizes tasks completed vs. pending with custom range filters (7-day, 14-day, 30-day summaries) and chart styles (Area, Line, Pie charts). Includes an integrated **Metrics Analyzer Chat** companion panel.
+*   **How AI helps**: Today's metrics update reactively as users check off assignments. The localized metrics chat assistant "Mind" reads completion ratios, consistency streak parameters, and focus rates to offer immediate, actionable feedback on procrastination risks and focus ratios.
 
-### C. Context-Aware Companion chatbot "Mind"
-*   **How it works**: Users can chat with "Mind", our integrated cognitive companion.
-*   **How AI helps**: Traditional bots are completely blind to what's on your screen. "Mind" has complete context. If you type *"summarize my day"*, "Mind" looks at your tasks, schedule, and stickies, and gives you a beautiful, bulleted progress briefing. If you type *"find chemistry"*, "Mind" searches all workspace archives and extracts references.
+### C. Spreadsheet Timetable Importer
+*   **How it works**: Users drag and drop an Excel sheet or text CSV timetable.
+*   **How AI helps**: The system parses columns (or runs high-fidelity visual cell extractions for spreadsheet structures) and populates both the high-urgency pipeline and daily blocks instantly, saving hours of manual setup.
 
-### D. Audio Strategist Loop (Voice-to-Voice)
-*   **How it works**: Users click "Voice Query" to speak ideas or procrastination issues.
-*   **How AI helps**: The system records the voice, runs speech recognition, queries Gemini for brief spoken strategies, reads the advice back to you using Speech Synthesis, and executes actions (e.g., automatically registers a task if you said *"add buy coffee beans to my list"*).
+### D. Duolingo Week Streak Calendar
+*   **How it works**: Tracks active consecutive days. Includes a horizontal week progress indicator.
+*   **How AI helps**: Checking off tasks satisfies the daily goal, lighting up a glowing fire emoji (🔥) on the weekly tracker, creating a positive dopamine feedback loop.
 
-### E. Quick Capture Creative Noteboard
-*   **How it works**: Users post lightning thoughts on sticky notes.
-*   **How AI helps**: These quick captures are immediately visible to "Mind". You can type ideas or fragments, and later ask "Mind" to expand on or organize your scattered notes.
+### E. Proactive Prioritization
+*   **How it works**: Users click **"AI Prioritize"** to pass tasks to Gemini.
+*   **How AI helps**: Gemini evaluates deadline proximities, calculates completion times, ranks the tasks, and appends an actionable coaching comment (e.g., *"Autonomous planning has reserved 10:00 - 12:00 for deep work"*).
+
+### F. Hour-by-Hour Time Blocking
+*   **How it works**: Clicking **"Auto-Schedule"** maps active tasks.
+*   **How AI helps**: Gemini dynamically crafts an optimized timeline, categorizing slots as **Focus** (demanding deep cognitive focus), **Admin** (quick responses, emails), or **Break** (mandatory rest), ensuring mental stamina is preserved.
+
+### G. Context-Aware Companion "Mind"
+*   **How it works**: Users chat with "Mind", our integrated cognitive companion.
+*   **How AI helps**: Traditional bots are completely blind to what's on your screen. "Mind" has complete context. If you type *"summarize my day"*, "Mind" looks at your tasks, schedule, and stickies, and gives you a beautiful, bulleted progress briefing.
+
+### H. Browser-Native Alert & Audio Zen Chime System
+*   **How it works**: Uses a non-blocking background thread that checks task deadlines every 15 seconds. It triggers precisely 15 minutes before any high-priority deadline.
+*   **How AI helps**: When a high-priority deadline is approaching, ClockWork fires an HTML5 Native Notification directly on the user's desktop with a one-click complete button and synthesizes an elegant, eye-opening audio melody using Web Audio oscillator configurations. This prevents important milestones from being silently forgotten in browser tabs.
 
 ---
 
@@ -87,7 +100,8 @@ Below is the structured data flow showing how the React frontend, Express.js pro
 
 ### Frontend & Styling
 *   **React 19**: Responsive layout, robust reactive states, and synchronized local hook triggers.
-*   **TypeScript 5**: Complete type-safety for tasks, notes, schedule slots, and message schemas.
+*   **Recharts**: Custom vector areas with gradient color codes charting weekly performance.
+*   **TypeScript 5**: Complete type-safety for tasks, notes, schedule slots, and profile models.
 *   **Tailwind CSS v4**: Beautiful editorial-style typography pairing ("Inter" and elegant classic serifs), custom padding spacing, and seamless cream/matte-charcoal transitions.
 *   **Motion**: Fluid rendering, fade effects, and interactive overlay transitions.
 
