@@ -259,42 +259,31 @@ const AppleMusicLyric: React.FC<AppleMusicLyricProps> = ({ current, next, progre
     lg: 'text-xs mt-2'
   };
 
-  // High contrast colors that are extremely readable in both dark and light modes
-  const highlightColor = darkMode ? '#FF7F50' : '#D95D39'; // Glowing Coral Orange vs Rich Terracotta
-  const baseColor = darkMode ? '#FFFFFF' : '#374151'; // Crisp pure white vs Premium Slate Charcoal
-
   return (
     <div className="flex flex-col items-center justify-center text-center w-full py-2 px-4 transition-all duration-300">
       <p 
         key={idx} 
-        className={`lyric-slide-up font-serif italic leading-relaxed text-center max-w-full break-words ${sizeClasses[size]}`}
+        className={`lyric-slide-up font-serif italic leading-relaxed text-center max-w-full break-words ${sizeClasses[size]} ${
+          darkMode ? 'text-white' : 'text-[#D95D39]'
+        }`}
         style={darkMode ? {
           filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.75)) drop-shadow(0 1px 1px rgba(0,0,0,0.9))'
         } : undefined}
       >
-        <span 
-          className="bg-clip-text text-transparent transition-all duration-100"
-          style={{
-            backgroundImage: `linear-gradient(90deg, ${highlightColor} 0%, ${highlightColor} ${progress * 100}%, ${baseColor} ${progress * 100}%)`,
-            WebkitBackgroundClip: 'text',
-            backgroundClip: 'text',
-          }}
-        >
-          "{current || "..."}"
-        </span>
+        "{current || "..."}"
       </p>
 
       {/* Modern, elegant line progress indicator directly under the lyrics */}
-      <div className="w-24 sm:w-32 h-0.5 bg-neutral-300/30 dark:bg-neutral-700/50 rounded-full overflow-hidden mt-3.5 mx-auto shadow-sm">
+      <div className="w-24 sm:w-32 h-0.5 bg-neutral-300/30 dark:bg-neutral-700/50 rounded-full overflow-hidden mt-3 mx-auto shadow-sm">
         <div 
-          className="h-full bg-[#D95D39] rounded-full transition-all duration-100 ease-out" 
+          className="h-full bg-[#D95D39] dark:bg-[#FF7F50] rounded-full transition-all duration-100 ease-out" 
           style={{ width: `${Math.min(100, Math.max(0, progress * 100))}%` }}
         />
       </div>
 
       {next && (
         <p 
-          className={`text-neutral-500 dark:text-neutral-400 italic mt-2.5 truncate max-w-full ${nextSizeClasses[size]}`}
+          className={`text-neutral-500 dark:text-neutral-400 italic mt-2 truncate max-w-full ${nextSizeClasses[size]}`}
           style={darkMode ? {
             filter: 'drop-shadow(0 1.5px 3px rgba(0,0,0,0.8))'
           } : undefined}
@@ -1791,22 +1780,22 @@ export default function App() {
       interval = setInterval(() => {
         setFocusTimeLeft(prev => prev - 1);
       }, 1000);
-    } else if (focusTimeLeft === 0) {
+    } else if (isFocusTimerActive && focusTimeLeft === 0) {
+      setIsFocusTimerActive(false);
       playZenChime();
       if (focusTimerMode === 'work') {
         setFocusTimerMode('break');
-        const nextTime = customBreakMin * 60;
+        const nextTime = (customBreakMin || 5) * 60;
         setFocusTimeLeft(nextTime);
         setFocusTimeTotal(nextTime);
-        addLog(`Focus session complete! Take a ${customBreakMin}-minute break.`);
+        addLog(`Focus session complete! Take a ${customBreakMin || 5}-minute break.`);
       } else {
         setFocusTimerMode('work');
-        const nextTime = customWorkMin * 60;
+        const nextTime = (customWorkMin || 25) * 60;
         setFocusTimeLeft(nextTime);
         setFocusTimeTotal(nextTime);
-        addLog(`Break complete! Initiating a ${customWorkMin}-minute focus block.`);
+        addLog(`Break complete! Initiating a ${customWorkMin || 25}-minute focus block.`);
       }
-      setIsFocusTimerActive(false);
     }
     return () => clearInterval(interval);
   }, [isFocusTimerActive, focusTimeLeft, focusTimerMode, customWorkMin, customBreakMin]);
@@ -3619,7 +3608,7 @@ export default function App() {
                   </div>
 
                   {musicType === 'local' && getFilteredTracks().length > 0 && (
-                    <div className="flex items-center gap-1.5 w-full text-[9px] font-mono text-neutral-400 mb-3">
+                    <div className="flex items-center gap-1.5 w-full text-[9px] font-mono text-neutral-500 dark:text-neutral-400 mb-3">
                       <span>{Math.floor(songCurrentTime / 60)}:{(Math.floor(songCurrentTime % 60)).toString().padStart(2, '0')}</span>
                       <input
                         type="range"
@@ -3712,9 +3701,7 @@ export default function App() {
 
                   {/* Synced Lyrics Integration */}
                   {showLyrics && (
-                    <div className={`mt-3 border border-dashed p-3 rounded-md text-center relative z-20 ${
-                      darkMode ? 'border-neutral-800 bg-neutral-900/40 text-gray-200' : 'border-gray-200 bg-gray-50/50 text-gray-800'
-                    }`}>
+                    <div className="mt-3 text-center relative z-20 w-full">
                       <div className="flex justify-between items-center mb-1.5 pb-1 border-b border-dashed border-neutral-500/10">
                         <span className="text-[8px] uppercase tracking-wider font-bold text-[#D95D39] font-mono">Synced Lyrics</span>
                         <button
@@ -4998,18 +4985,35 @@ export default function App() {
 
                     <div className="grid grid-cols-2 gap-3 pt-2 font-mono text-[10px]">
                       <div>
-                        <label className="block text-[9px] uppercase opacity-65 mb-1 font-bold">Work Duration (Min)</label>
+                        <label className="block text-[9px] uppercase opacity-65 mb-1 font-bold">Work Duration (1-900 Min)</label>
                         <input
                           type="number"
                           min="1"
-                          max="120"
+                          max="900"
                           value={customWorkMin}
                           onChange={(e) => {
-                            const v = Math.max(1, parseInt(e.target.value, 10) || 25);
+                            const valStr = e.target.value;
+                            if (valStr === '') {
+                              setCustomWorkMin('' as any);
+                              return;
+                            }
+                            let v = parseInt(valStr, 10);
+                            if (isNaN(v)) return;
+                            if (v < 1) v = 1;
+                            if (v > 900) v = 900;
                             setCustomWorkMin(v);
                             if (focusTimerMode === 'work') {
                               setFocusTimeLeft(v * 60);
                               setFocusTimeTotal(v * 60);
+                            }
+                          }}
+                          onBlur={() => {
+                            if (!customWorkMin || isNaN(customWorkMin as any)) {
+                              setCustomWorkMin(25);
+                              if (focusTimerMode === 'work') {
+                                setFocusTimeLeft(25 * 60);
+                                setFocusTimeTotal(25 * 60);
+                              }
                             }
                           }}
                           className={`w-full px-2.5 py-1.5 border text-xs focus:outline-none ${
@@ -5018,18 +5022,35 @@ export default function App() {
                         />
                       </div>
                       <div>
-                        <label className="block text-[9px] uppercase opacity-65 mb-1 font-bold">Break Duration (Min)</label>
+                        <label className="block text-[9px] uppercase opacity-65 mb-1 font-bold">Break Duration (1-900 Min)</label>
                         <input
                           type="number"
                           min="1"
-                          max="60"
+                          max="900"
                           value={customBreakMin}
                           onChange={(e) => {
-                            const v = Math.max(1, parseInt(e.target.value, 10) || 5);
+                            const valStr = e.target.value;
+                            if (valStr === '') {
+                              setCustomBreakMin('' as any);
+                              return;
+                            }
+                            let v = parseInt(valStr, 10);
+                            if (isNaN(v)) return;
+                            if (v < 1) v = 1;
+                            if (v > 900) v = 900;
                             setCustomBreakMin(v);
                             if (focusTimerMode === 'break') {
                               setFocusTimeLeft(v * 60);
                               setFocusTimeTotal(v * 60);
+                            }
+                          }}
+                          onBlur={() => {
+                            if (!customBreakMin || isNaN(customBreakMin as any)) {
+                              setCustomBreakMin(5);
+                              if (focusTimerMode === 'break') {
+                                setFocusTimeLeft(5 * 60);
+                                setFocusTimeTotal(5 * 60);
+                              }
                             }
                           }}
                           className={`w-full px-2.5 py-1.5 border text-xs focus:outline-none ${
@@ -5728,9 +5749,7 @@ export default function App() {
 
                         {/* Synced Lyrics Integration */}
                         {showLyrics && (
-                          <div className={`mt-3 border border-dashed p-4 rounded-md text-center relative ${
-                            darkMode ? 'border-neutral-800 bg-neutral-900/30 text-gray-200' : 'border-gray-200 bg-gray-50/50 text-gray-800'
-                          }`}>
+                          <div className="mt-3 text-center relative w-full">
                             <div className="flex justify-between items-center mb-2 pb-1 border-b border-dashed border-neutral-500/10">
                               <span className="text-[9px] uppercase tracking-wider font-bold text-[#D95D39] font-mono">Synced Lyrics</span>
                               <button
@@ -5800,16 +5819,15 @@ export default function App() {
                                     }
                                     const activeLyric = getActiveLyricLine(lyricsText, songCurrentTime, songDuration);
                                     return (
-                                      <div className="text-center w-full">
-                                        <p key={activeLyric.index} className="lyric-slide-up text-sm font-serif italic font-bold text-neutral-800 dark:text-neutral-100 leading-relaxed">
-                                          "{activeLyric.current || "..."}"
-                                        </p>
-                                        {activeLyric.next && (
-                                          <p className="text-[10px] text-neutral-400 dark:text-neutral-500 italic mt-1.5 opacity-60 truncate max-w-full">
-                                            Next: {activeLyric.next}
-                                          </p>
-                                        )}
-                                      </div>
+                                      <AppleMusicLyric
+                                        current={activeLyric.current}
+                                        next={activeLyric.next}
+                                        progress={activeLyric.progress}
+                                        idx={activeLyric.index}
+                                        darkMode={darkMode}
+                                        backdrop={false}
+                                        size="sm"
+                                      />
                                     );
                                   })()
                                 ) : (
