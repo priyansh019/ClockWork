@@ -1,40 +1,47 @@
-# ClockWork Documentation Manual
+# ClockWork User & Feature Manual
 
-Welcome to the official manual for **ClockWork**—the proactive, AI-powered productivity companion designed to turn passive schedule alerts into action-oriented momentum. 
+Welcome to the comprehensive documentation manual for **ClockWork**—the proactive, AI-powered productivity companion designed to turn passive daily schedules into action-oriented momentum. 
 
-Adhering to a sophisticated **Editorial Aesthetic** (minimal typography, spacious grids, warm cream and matte charcoal tones), ClockWork bridges the gap between chaotic schedules and peaceful, deep focus.
+Adhering to a highly refined **Editorial Aesthetic** (utilizing generous negative space, minimal and elegant typography, custom theme palettes, and a structured layout), ClockWork bridges the gap between chaotic schedules and peaceful, deep focus.
+
+Below is a complete guide to each of ClockWork's workspace modules, detailing their individual features and practical uses.
 
 ---
 
 ## 1. Onboarding Portal & Workspace Profiles
+
 ### Individual Features:
-*   **Multi-Role Registration & Login**: Real-time sign-up and login utilizing secure passwords, custom usernames, and email address verification.
-*   **Persona Categorization**: Tailors the platform's features and prompts based on three roles: **Student**, **Work (Professional)**, and **Personal**.
-*   **Workspace Metadata Binding**: Captures custom student metadata (e.g., school/college, major) or professional metadata (e.g., company, title) to enrich the system's focus parameters.
-*   **Automatic Seeded Tasks**: Seeding category-specific daily tasks (e.g., student assignments, work stand-ups) to give users an immediate starting pipeline on registration.
+*   **Multi-Role Registration & Login**: A real-time sign-up and login portal utilizing secure authentication states, custom usernames, and persistent user profiles.
+*   **Persona Categorization**: Dynamically tailors the platform's initial task seeding and prompt styling based on three key profiles: **Student**, **Work (Professional)**, or **Personal**.
+*   **Academic/Professional Metadata Binding**: Captures and saves school/college majors, companies, and roles to calibrate the workspace to the user's daily domain.
+*   **Seeded Task Pipelines**: Instantly generates relevant template items (e.g., student course readings or professional agile standups) to eliminate any "cold start" friction.
 
 ### Practical Uses:
-*   **Onboarding**: Guarantees a zero-cold-start experience. Users are immediately welcomed with a workspace customized to their academic, professional, or domestic life.
-*   **Persona Context**: Helps the built-in AI companion "Mind" understand whether to provide academic scheduling tips or professional enterprise advice.
+*   **Tailored Onboarding**: Instantly shapes the visual and semantic context of your productivity workspace.
+*   **AI Persona Contextualization**: Provides the built-in AI companion "Mind" with the situational parameters needed to offer custom academic advice or professional time-management strategies.
 
 ---
 
-## 2. The Active Workspace (Home Hub)
+## 2. Active Workspace (Home Hub Dashboard)
+
 ### Individual Features:
-*   **Live Deck Calendar & UTC Clock**: A prominent, retro-modern, flip-animation digital clock displaying local hours, minutes, and seconds.
-*   **Daily Momentum Scorecard**: Displays active stats (Streak Multiplier, Tasks Completed Today, Active Status, and Focus Target Ratios).
-*   **Tabbed Navigation Rail**: Fluidly switch between the **Active Workspace (Home)**, **Productivity Analytics**, and **Timetable Sync** tabs.
+*   **Live Deck Clock**: A prominent, retro-modern digital clock displaying active local hours, minutes, and seconds.
+*   **Daily Momentum Scorecard**: Displays active metrics including Streak Multiplier, Total Completed Tasks, Active Productivity Status, and Focus Target Ratios.
+*   **Bento Grid Cockpit**: Organizes notifications, alerts, audio controllers, notes, and tasks side-by-side inside a modular, space-efficient grid.
+*   **Custom Theme Selector**: Lets users choose between elegant editorial styles (e.g., *Cream*, *Sage*, *Slate*, *Charcoal*, *Navy*, *Canopy*) with dynamic, persistent layout colorization.
 
 ### Practical Uses:
-*   **Central Workspace Control**: The ultimate cockpit where you view your immediate deadlines, monitor your daily momentum streak, schedule tasks, and check active status.
+*   **Central Workspace Control**: Serves as the high-fidelity cockpit to view your daily progress, monitor streaks, check high-priority alerts, and manage ambient backgrounds.
+*   **Cognitive Calmness**: Reduces visual noise by presenting all critical parameters in a unified, beautifully aligned interface.
 
 ---
 
-## 3. Daily Task Pipeline
+## 3. Daily Task Pipeline & AI Sweep
+
 ### Individual Features:
-*   **Priority-Ranked Intake**: Add tasks, assign precise deadlines, categorize them (Work, Study, Personal, Admin), and flag their priority (**High**, **Medium**, **Low**).
-*   **Inline Editing & Progress Toggles**: Mark tasks complete to immediately trigger visual feedback, adjust metadata, or delete them in one click.
-*   **"AI Prioritize" Sweep Engine**: Passes the list to Gemini, which computes deadline proximities, calculates necessary effort, ranks the pipeline, and inserts a tactical coaching comment.
+*   **Priority & Category Mapping**: Lets you add daily tasks, assign precise deadline times, specify priority level (**High**, **Medium**, **Low**), and tag categories (**Work**, **Study**, **Personal**, **Admin**).
+*   **Progress Toggles**: Fast, inline completion checkmarks and item deletions that immediately update your daily completion statistics and metrics.
+*   **"AI Prioritize" Sweep Engine**: Invokes the Gemini API to analyze task weights, calculate urgency metrics based on deadline proximity, rank tasks logically, and write custom coaching tips.
 
 ### Practical Uses:
 *   **Brain Dumping**: Quickly offload raw thoughts and anxieties into a clean, structured repository.
@@ -43,29 +50,32 @@ Adhering to a sophisticated **Editorial Aesthetic** (minimal typography, spaciou
 ---
 
 ## 4. Hour-by-Hour Time Blocking Scheduler
+
 ### Individual Features:
-*   **Timeline Slots Matrix**: Interactive hour-by-hour calendar cells representing the current daily schedule.
-*   **Auto-Schedule Auto-Blocking**: Tap to let the AI organize your active tasks directly into the timeline.
-*   **State-Authorized Slot Tagging**: Classifies slots dynamically into **Focus** (demanding deep cognitive focus), **Admin** (quick responses, emails), or **Break** (mandatory rest).
+*   **Interactive Chrono-Slots**: An hour-by-hour calendar grid representing the current day's active blocks.
+*   **State-Authorized Slot Tagging**: Classifies individual hours into **Focus** (high-cognitive focus), **Admin** (quick chores, emails), or **Break** (recharge).
+*   **AI Auto-Scheduler**: Hands off your list of active tasks to the AI, which automatically time-boxes them into empty chronological slots in your schedule.
 
 ### Practical Uses:
-*   **Time-Boxing**: Allocate real-time slots to theoretical tasks, converting your task list into an actionable daily blueprint.
-*   **Stamina Preservation**: Automatically inserts structured rest breaks between demanding cognitive work blocks, maintaining high performance over long days.
+*   **Time-Boxing**: Convert an overwhelming task list into an organized, step-by-step daily roadmap.
+*   **Fatigue Management**: Ensure proper pacing by embedding structured breaks between highly intense cognitive focus slots.
 
 ---
 
 ## 5. Sticky Notes Scratchpad
+
 ### Individual Features:
-*   **Typographic Quick-Capture Cards**: Rich scratchpad cards featuring custom editorial pastel backgrounds (sage green, editorial peach, slate white, charcoal).
-*   **Dynamic Card Controls**: Easily spawn new sticky cards, delete old notes, or edit them in real-time.
-*   **Local Cache Redundancy**: Instantly caches text changes in your local database so notes remain safe across browser reboots.
+*   **Typographic Quick-Capture Cards**: Rich, editable sticky scratchpad blocks with custom editorial background options.
+*   **Dynamic Note Managers**: Fast creation and destruction controls to organize ideas without cluttering your core task list.
+*   **Persistent Cash Storage**: Instantly saves draft updates to the local database to guarantee no loss of thoughts across browser reloads.
 
 ### Practical Uses:
-*   **Transient Capture**: Instantly jot down phone numbers, meeting codes, fleeting ideas, or drafts of emails before turning them into structured calendar items.
+*   **Transient Drafting**: Jot down phone numbers, meeting links, draft responses, or fleeting insights that arise during deep focus blocks.
 
 ---
 
-## 6. The "Zen Chamber" Immersive Deep Focus Mode
+## 6. "Zen Chamber" Immersive Deep Focus Mode
+
 ### Individual Features:
 *   **Breath Sphere Box Breathing Guide**: An interactive, expanding/collapsing breathing orb with step-by-step instructions (Inhale, Hold, Exhale, Hold) utilizing standard 4-second box breathing cycles.
 *   **Live Deck Flip Clock**: Centered display showing focus remaining down to the second, helping keep eyes away from distracting phone notifications.
@@ -81,59 +91,75 @@ Adhering to a sophisticated **Editorial Aesthetic** (minimal typography, spaciou
 ---
 
 ## 7. Synced LRC Lyrics Player
+
 ### Individual Features:
-*   **Apple Music Lyric Style UI**: Displays active, scrolling, beautifully styled typography synced perfectly to the milliseconds of the ambient music.
-*   **High-Contrast Text Coloring**: Active lyrics are rendered in high-contrast solid text (pure white in dark mode, rich terracotta `#D95D39` in light mode) preventing the readability and overlapping issues of standard gradient clips.
-*   **Next-Line Preview**: Previews the upcoming lyric block directly below the active line for high-performance reading and singing.
-*   **Dynamic Sleek Progress Bar**: A minimal 0.5px glowing progress line that fills up under the active lyric line representing the exact duration of the spoken sentence.
-*   **Manual LRC Editor**: A fully editable textarea panel allowing users to paste, fix, or write standard LRC files directly inside the application, complete with syntax checking.
+*   **Minimalist Synced Lyrics UI**: Renders active synced lyric text in an elegant, centered typography style, avoiding all clunky background boxes and decorative clutter.
+*   **High-Contrast Readable Colors**: Utilizes clean, robust text color schemes (pure white on dark backdrops, rich terracotta orange on light/cream backdrops) ensuring absolute legibility across all editorial themes.
+*   **Aesthetic Progress Line**: A sleek, high-visibility 1.5px progress tracker that fills up directly under the active lyric line to represent sentence progress.
+*   **Next-Line Previewer**: Displays a subtler upcoming lyric line directly below, giving users visual pacing for tracks.
 
 ### Practical Uses:
-*   **Karaoke Motivation**: Helps keep long study sessions exciting and active by bringing favorite synced tracks into the workspace.
-*   **Audio Alignment**: Lets users coordinate their work momentum with musical segments or ambient loops.
+*   **Focus Audio Companion**: Combines the benefits of music with high-contrast text rendering to make focus sessions more enjoyable.
+*   **Seamless Integration**: Integrates directly under the bespoke audio soundscapes or uploaded local files.
 
 ---
 
 ## 8. Recharts Productivity Analytics
+
 ### Individual Features:
-*   **Area, Line, and Pie Visualizers**: Renders the exact ratio of completed vs. pending tasks over 7-day, 14-day, and 30-day intervals.
-*   **Local State Metrics Parser**: Computes active stats (Average Completion Rate, Focus Volume, Task Clearance Speeds).
-*   **Metrics Chatbot Assistant**: A dedicated panel for "Mind" to parse task logs and chart statistics, offering localized tips on scheduling habits.
+*   **Task Analytics Charts**: Visually represents daily and weekly task completions using high-performance Area, Bar, and Line charts.
+*   **Local State Metrics Parser**: Processes historic completion metrics, calculating Average Completion Rates, Focus Volume, and Task Clearance Speeds.
+*   **Metrics Chatbot Companion**: A direct, chat-based portal to "Mind" allowing users to query task charts or request analytical coaching tips.
 
 ### Practical Uses:
-*   **Productivity Auditing**: Helps visualize whether you are actually completing tasks or consistently pushing them off.
-*   **Habit Correction**: Consult the metrics bot to analyze which days you are most productive, adjusting your schedule accordingly.
+*   **Productivity Audits**: Track your task completion trends over 7-day, 14-day, and 30-day intervals to verify genuine progress.
+*   **Behavioral Correction**: Query the assistant to discover which times of day or categories of tasks you perform best in.
 
 ---
 
 ## 9. Spreadsheet Timetable Importer
+
 ### Individual Features:
-*   **Drag-and-Drop Dropzone**: Supports importing CSV and Excel spreadsheets directly from local folders.
-*   **Automatic Cell Parser**: Extracts columns (such as Class Name, Time, Room, Instructor) and populates the database.
-*   **Manual Timetable Grid Builder**: Register classes manually using input boxes if no spreadsheet is available.
+*   **Drag-and-Drop Dropzone**: Let users drop CSV or Excel spreadsheet files to instantly extract class or meeting schedules.
+*   **Manual Timetable Builder**: Interactive class grid rows to manually register class names, times, rooms, and instructor details.
+*   **Automatic Cell Parser**: Extracts standard course tables and integrates them into the daily hour-by-hour blocking scheduler.
 
 ### Practical Uses:
-*   **Course Coordination**: High school or university students can load their entire semester's schedule in one drag-and-drop step.
-*   **Weekly Template Loading**: Import recurrent professional calendars to prepopulate daily hour-by-hour blocks every Monday morning.
+*   **Course Schedule Syncing**: Students can instantly parse school schedules to have them mapped automatically to their daily time blocks.
+*   **Calendar Templates**: Professionals can upload template team schedules to kickstart their weeks in one click.
 
 ---
 
-## 10. Gamified Streak Calendars (Duolingo-style)
+## 10. Gamified Streak Calendar
+
 ### Individual Features:
-*   **Visual Streak Multiplier**: Tracks how many consecutive days the user has achieved their custom daily task goal.
-*   **Active Fire Indicators (🔥)**: Celebrates consistency with glowing, animated fire icons on achieved weekdays.
-*   **Reward Dopamine Loops**: Celebratory logs and sounds are fired on streak increments.
+*   **Visual Streak Multiplier**: Tracks the number of consecutive days you have achieved your custom daily task targets.
+*   **Weekly Flame Identifiers (🔥)**: Celebrates daily consistency with glowing, high-contrast animated indicators on achieved calendar days.
+*   **Gamified Rewards**: Celebratory logs and visual milestones are unlocked on streak updates to reinforce consistency.
 
 ### Practical Uses:
-*   **Habit Construction**: Uses classic gaming mechanics to encourage logging in daily, turning tedious chores into an active habit streak.
+*   **Habit Loop Construction**: Uses classic gaming mechanics to encourage logging in daily, turning tedious chores into an active habit streak.
 
 ---
 
-## 11. Browser-Native Alert & Audio Zen Chime System
+## 11. Push Notification & Audio Zen Chime System
+
 ### Individual Features:
-*   **HTML5 Native Push Notifications**: Sends desktop alerts precisely 15 minutes before high-priority deadlines, complete with a quick completion link.
 *   **Web Audio API Synth**: Synthesizes a beautiful, rich, multi-oscillator zen chime sound upon timer completion or active alert triggers.
-*   **Repeat & Duplicate Protection**: Uses state-authorized guards so alerts and chime sound effects fire exactly once, completely preventing duplicate or annoying sound loops.
+*   **Duplicate-Fire Protection**: Employs synchronous reference guards (`timerFinishedPlayedRef`) to ensure chime notifications play exactly once, completely preventing repeating or layered chime sounds.
+*   **Native Push Alerts**: Sends standard desktop notifications exactly 15 minutes before high-priority deadlines.
 
 ### Practical Uses:
-*   **Safety Net**: Ensures you are pulled back to reality in time for an exam or client call even if you are focused on other tabs.
+*   **Deadline Safety Net**: Ensures you are pulled back to reality in time for an exam or client call even if you are focused on other tabs.
+
+---
+
+## 12. Social Compete & Peer Leagues
+
+### Individual Features:
+*   **Ally Linking Portals**: Link peers directly by typing in their custom ClockWork user handles.
+*   **Metric Comparison Matrices**: Compare total completed focus blocks, weekly statistics, and active daily streak counts.
+*   **Support & Nudge Feed**: Send supportive notifications or light competition prompts to connected peers.
+
+### Practical Uses:
+*   **Peer Accountability**: Work alongside classmates or colleagues to build mutual motivation, utilizing friendly comparison metrics to stay consistent.

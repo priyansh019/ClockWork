@@ -321,7 +321,7 @@ Return ONLY the JSON. No markdown wrappers.`;
       if (!ai) {
         // Fallback context-aware response matcher if key is missing
         const lower = (message || '').toLowerCase();
-        let reply = "I am 'Mind', your proactive companion. Configure a Gemini API key to activate my fully general reasoning mode.";
+        let reply = "I am 'Mind', your proactive companion. Configure a Gemini API key in the Secrets panel to activate my fully general reasoning mode.";
         if (lower.includes('summarize') || lower.includes('summary')) {
           reply = `Here is your current status: You have ${tasks ? tasks.length : 0} total tasks (${tasks ? tasks.filter((t: any) => !t.completed).length : 0} pending), ${stickyNotes ? stickyNotes.length : 0} quick captures, and a consistency momentum of ${streak || 0} days. Your top priority is "${tasks && tasks[0] ? tasks[0].title : 'None currently'}".`;
         } else if (lower.includes('find') || lower.includes('search')) {
@@ -332,6 +332,8 @@ Return ONLY the JSON. No markdown wrappers.`;
           } else {
             reply = "I searched through your tasks and quick captures but couldn't find an exact match for that keyword. Try another term or add it to your daily list!";
           }
+        } else {
+          reply = `I am 'Mind', your proactive workspace companion. I noticed you asked a general question: "${message}". To unlock my full conversational intelligence powered by Gemini so I can answer any academic, professional, technical, or creative question, please configure your Gemini API Key in the Secrets panel on the left!`;
         }
         return res.json({ reply, isFallback: true });
       }
@@ -341,9 +343,11 @@ Return ONLY the JSON. No markdown wrappers.`;
         .join('\n');
 
       const systemPrompt = `You are "Mind", the highly intelligent, context-aware AI productivity companion of ClockWork.
-The user can find, ask, search, and request summaries of anything in their workspace.
+The user can find, ask, search, and request summaries of anything in their workspace. They can also ask you ANY general questions, academic queries, coding problems, professional/business advice, philosophy, or general knowledge.
 
-Here is the current ClockWork Live State:
+You have full capability and are encouraged to answer general queries comprehensively and intelligently, while keeping your elegant, supportive ClockWork companion persona.
+
+Here is the current ClockWork Live State (for optional context if they refer to their work):
 - Consistency Streak: ${streak || 0} days
 - High Priority Tasks: ${JSON.stringify(tasks || [], null, 2)}
 - Daily Schedule Blocks: ${JSON.stringify(schedule || [], null, 2)}
@@ -355,13 +359,12 @@ ${conversationHistory}
 User's Query: "${message}"
 
 Your task is to:
-1. Provide a precise, highly helpful, and motivating response.
-2. If the user asks to "summarize", give them a beautiful, scannable overview of their status and momentum.
-3. If they ask to "find" or "search" for something, scour the provided tasks, schedule, and stickies, and point out matches specifically.
-4. Keep the tone sophisticated, supportive, clear, and action-oriented (consistent with ClockWork's Editorial aesthetic). 
-5. Keep your answer brief, elegant, and directly address their request.
-
-Return your response directly as clean text or markdown.`;
+1. Provide a highly precise, helpful, and motivating response.
+2. If the user asks a general question, answer it completely, thoroughly, and insightfully.
+3. If the user asks to "summarize" their schedule/workspace, give them a beautiful, scannable overview of their status and momentum.
+4. If they ask to "find" or "search" for something in their workspace, scour the provided tasks, schedule, and stickies, and point out matches specifically.
+5. Keep the tone sophisticated, supportive, clear, and action-oriented (consistent with ClockWork's Editorial aesthetic). 
+6. Return your response directly as clean text or markdown. Keep your answer elegant and directly focused on their request.`;
 
       const response = await ai.models.generateContent({
         model: 'gemini-3.5-flash',

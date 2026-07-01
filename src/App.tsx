@@ -35,6 +35,7 @@ import {
   Clock,
   TrendingUp,
   Sliders,
+  Edit2,
   CheckSquare,
   Settings,
   Bell,
@@ -259,22 +260,28 @@ const AppleMusicLyric: React.FC<AppleMusicLyricProps> = ({ current, next, progre
     lg: 'text-xs mt-2'
   };
 
+  const activeColor = darkMode ? '#FFFFFF' : '#D95D39';
+  const inactiveColor = darkMode ? 'rgba(255,255,255,0.25)' : 'rgba(217,93,57,0.25)';
+
   return (
-    <div className="flex flex-col items-center justify-center text-center w-full py-2 px-4 transition-all duration-300">
+    <div className="flex flex-col items-center justify-center text-center w-full py-1.5 px-3 transition-all duration-300">
       <p 
         key={idx} 
-        className={`lyric-slide-up font-serif italic leading-relaxed text-center max-w-full break-words ${sizeClasses[size]} ${
-          darkMode ? 'text-white' : 'text-[#D95D39]'
-        }`}
-        style={darkMode ? {
-          filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.75)) drop-shadow(0 1px 1px rgba(0,0,0,0.9))'
-        } : undefined}
+        className={`lyric-slide-up font-serif italic leading-relaxed text-center max-w-full break-words ${sizeClasses[size]}`}
+        style={{
+          backgroundImage: `linear-gradient(to right, ${activeColor} 0%, ${activeColor} ${progress * 100}%, ${inactiveColor} ${progress * 100}%, ${inactiveColor} 100%)`,
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+          display: 'inline-block',
+          filter: darkMode ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' : undefined,
+        }}
       >
         "{current || "..."}"
       </p>
 
       {/* Modern, elegant line progress indicator directly under the lyrics */}
-      <div className="w-24 sm:w-32 h-0.5 bg-neutral-300/30 dark:bg-neutral-700/50 rounded-full overflow-hidden mt-3 mx-auto shadow-sm">
+      <div className="w-24 sm:w-32 h-1.5 bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden mt-2 mx-auto shadow-sm">
         <div 
           className="h-full bg-[#D95D39] dark:bg-[#FF7F50] rounded-full transition-all duration-100 ease-out" 
           style={{ width: `${Math.min(100, Math.max(0, progress * 100))}%` }}
@@ -283,10 +290,9 @@ const AppleMusicLyric: React.FC<AppleMusicLyricProps> = ({ current, next, progre
 
       {next && (
         <p 
-          className={`text-neutral-500 dark:text-neutral-400 italic mt-2 truncate max-w-full ${nextSizeClasses[size]}`}
-          style={darkMode ? {
-            filter: 'drop-shadow(0 1.5px 3px rgba(0,0,0,0.8))'
-          } : undefined}
+          className={`font-sans tracking-wide mt-1.5 truncate max-w-full ${nextSizeClasses[size]} ${
+            darkMode ? 'text-neutral-400' : 'text-neutral-600 font-medium'
+          }`}
         >
           Next: {next}
         </p>
@@ -941,6 +947,49 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
+  const getRemainingTimeText = (deadline: string): string => {
+    const now = localTime || new Date();
+    const currentTotalMin = now.getHours() * 60 + now.getMinutes();
+
+    let cleanDeadline = deadline.trim();
+    let hours = NaN;
+    let minutes = NaN;
+
+    const ampmMatch = cleanDeadline.match(/^(\d+):(\d+)\s*(AM|PM)$/i);
+    const standardMatch = cleanDeadline.match(/^(\d+):(\d+)$/);
+
+    if (ampmMatch) {
+      hours = parseInt(ampmMatch[1], 10);
+      minutes = parseInt(ampmMatch[2], 10);
+      const ampm = ampmMatch[3].toUpperCase();
+      if (ampm === 'PM' && hours < 12) hours += 12;
+      if (ampm === 'AM' && hours === 12) hours = 0;
+    } else if (standardMatch) {
+      hours = parseInt(standardMatch[1], 10);
+      minutes = parseInt(standardMatch[2], 10);
+    }
+
+    if (isNaN(hours) || isNaN(minutes)) {
+      return '';
+    }
+
+    const taskTotalMin = hours * 60 + minutes;
+    const diff = taskTotalMin - currentTotalMin;
+
+    if (diff < 0) {
+      const absDiff = Math.abs(diff);
+      const h = Math.floor(absDiff / 60);
+      const m = absDiff % 60;
+      return h > 0 ? `${h}h ${m}m overdue` : `${m}m overdue`;
+    } else if (diff === 0) {
+      return 'due now';
+    } else {
+      const h = Math.floor(diff / 60);
+      const m = diff % 60;
+      return h > 0 ? `${h}h ${m}m remaining` : `${m}m remaining`;
+    }
+  };
+
   useEffect(() => {
     let interval: any = null;
     if (isFullscreenFocus) {
@@ -1024,15 +1073,30 @@ export default function App() {
 
   // --- FOCUS TIMER STATES ---
   const [focusTimerMode, setFocusTimerMode] = useState<'work' | 'break'>('work');
-  const [customWorkMin, setCustomWorkMin] = useState<number>(25);
-  const [customBreakMin, setCustomBreakMin] = useState<number>(5);
-  const [focusTimeLeft, setFocusTimeLeft] = useState<number>(25 * 60);
-  const [focusTimeTotal, setFocusTimeTotal] = useState<number>(25 * 60);
+  const [customWorkMin, setCustomWorkMin] = useState<number>(() => {
+    const saved = localStorage.getItem('cw_custom_work_min');
+    return saved ? parseInt(saved, 10) : 25;
+  });
+  const [customBreakMin, setCustomBreakMin] = useState<number>(() => {
+    const saved = localStorage.getItem('cw_custom_break_min');
+    return saved ? parseInt(saved, 10) : 5;
+  });
+  const [focusTimeLeft, setFocusTimeLeft] = useState<number>(() => {
+    const saved = localStorage.getItem('cw_custom_work_min');
+    const min = saved ? parseInt(saved, 10) : 25;
+    return min * 60;
+  });
+  const [focusTimeTotal, setFocusTimeTotal] = useState<number>(() => {
+    const saved = localStorage.getItem('cw_custom_work_min');
+    const min = saved ? parseInt(saved, 10) : 25;
+    return min * 60;
+  });
   const [isFocusTimerActive, setIsFocusTimerActive] = useState<boolean>(false);
 
   // --- DEADLINE ALERTS / NOTIFICATION STATES ---
   const [dueSoonNotifications, setDueSoonNotifications] = useState<Task[]>([]);
   const notifiedTasksRef = useRef<Record<string, boolean>>({});
+  const timerFinishedPlayedRef = useRef<boolean>(false);
   const [nativeNotificationPermission, setNativeNotificationPermission] = useState<string>(() => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
       return Notification.permission;
@@ -1190,6 +1254,30 @@ export default function App() {
   const [newStickyColor, setNewStickyColor] = useState('#FFF9C4');
   const [newStickyCategory, setNewStickyCategory] = useState('work');
 
+  // Dictation / Voice Dictation States
+  const [isDictatingTask, setIsDictatingTask] = useState(false);
+  const [isDictatingSticky, setIsDictatingSticky] = useState(false);
+
+  // Day Flow Edit/Add states
+  const [showAddSlotForm, setShowAddSlotForm] = useState(false);
+  const [newSlotTime, setNewSlotTime] = useState('09:00 - 10:00');
+  const [newSlotTitle, setNewSlotTitle] = useState('');
+  const [newSlotType, setNewSlotType] = useState<'focus' | 'admin' | 'break'>('focus');
+
+  const [editingSlotIndex, setEditingSlotIndex] = useState<number | null>(null);
+  const [editSlotTime, setEditSlotTime] = useState('');
+  const [editSlotTitle, setEditSlotTitle] = useState('');
+  const [editSlotType, setEditSlotType] = useState<'focus' | 'admin' | 'break'>('focus');
+
+  // Directive Alerts Edit/Add states
+  const [showAddAlertForm, setShowAddAlertForm] = useState(false);
+  const [newAlertType, setNewAlertType] = useState('Urgent Alert');
+  const [newAlertText, setNewAlertText] = useState('');
+
+  const [editingAlertIndex, setEditingAlertIndex] = useState<number | null>(null);
+  const [editAlertType, setEditAlertType] = useState('');
+  const [editAlertText, setEditAlertText] = useState('');
+
   const [manifestoOpen, setManifestoOpen] = useState(false);
   const [voiceInput, setVoiceInput] = useState('');
   const [voiceReply, setVoiceReply] = useState('Ready to advise. Ask for proactive schedule audits.');
@@ -1251,8 +1339,25 @@ export default function App() {
     const matched = themesList.find(t => t.id === themeId);
     if (matched) {
       setDarkMode(matched.mode === 'dark');
+      if (matched.mode === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
     }
   }, [themeId]);
+
+  useEffect(() => {
+    if (customWorkMin && !isNaN(customWorkMin)) {
+      localStorage.setItem('cw_custom_work_min', customWorkMin.toString());
+    }
+  }, [customWorkMin]);
+
+  useEffect(() => {
+    if (customBreakMin && !isNaN(customBreakMin)) {
+      localStorage.setItem('cw_custom_break_min', customBreakMin.toString());
+    }
+  }, [customBreakMin]);
 
   useEffect(() => {
     localStorage.setItem('cw_chart_chat', JSON.stringify(chartChatMessages));
@@ -1777,12 +1882,16 @@ export default function App() {
   useEffect(() => {
     let interval: any = null;
     if (isFocusTimerActive && focusTimeLeft > 0) {
+      timerFinishedPlayedRef.current = false;
       interval = setInterval(() => {
         setFocusTimeLeft(prev => prev - 1);
       }, 1000);
     } else if (isFocusTimerActive && focusTimeLeft === 0) {
       setIsFocusTimerActive(false);
-      playZenChime();
+      if (!timerFinishedPlayedRef.current) {
+        timerFinishedPlayedRef.current = true;
+        playZenChime();
+      }
       if (focusTimerMode === 'work') {
         setFocusTimerMode('break');
         const nextTime = (customBreakMin || 5) * 60;
@@ -2112,11 +2221,13 @@ export default function App() {
   };
 
   const handleSignOut = () => {
-    localStorage.removeItem('cw_user');
-    setCurrentUser(null);
-    setAuthEmail('');
-    setAuthPassword('');
-    addLog('Logged out from workspace.');
+    if (confirm("Are you sure you want to sign out from your ClockWork workspace?")) {
+      localStorage.removeItem('cw_user');
+      setCurrentUser(null);
+      setAuthEmail('');
+      setAuthPassword('');
+      addLog('Logged out from workspace.');
+    }
   };
 
   // --- SPEECH SERVICES ---
@@ -2528,19 +2639,35 @@ export default function App() {
       speakAdvice(data.reply);
       addLog('Voice Advice synthesized.');
 
-      if (data.action && data.action.type === 'add_task') {
-        const newTask: Task = {
-          id: Date.now().toString(),
-          title: data.action.title,
-          deadline: data.action.deadline || '17:00',
-          priority: 'high',
-          priorityNum: '0' + (tasks.length + 1),
-          completed: false,
-          estimatedTime: '45 mins',
-          aiComment: 'Autonomous addition via audio instruction.'
-        };
-        setTasks((prev) => [...prev, newTask]);
-        addLog(`Voice Action: Created task "${data.action.title}"`);
+      if (data.action) {
+        const act = data.action;
+        if (act.type === 'add_task') {
+          const newTask: Task = {
+            id: Date.now().toString(),
+            title: act.title,
+            deadline: act.deadline || '17:00',
+            priority: act.priority || 'high',
+            priorityNum: '0' + (tasks.length + 1),
+            completed: false,
+            estimatedTime: act.estimatedTime || '45 mins',
+            aiComment: 'Autonomous addition via audio instruction.'
+          };
+          setTasks((prev) => [...prev, newTask]);
+          addLog(`Voice Action: Created task "${act.title}"`);
+        } else if (act.type === 'complete_task') {
+          const lowerTitle = act.title.toLowerCase();
+          setTasks(prev => prev.map(t => t.title.toLowerCase().includes(lowerTitle) ? { ...t, completed: true } : t));
+          addLog(`Voice Action: Completed matching task "${act.title}"`);
+        } else if (act.type === 'start_timer') {
+          setIsFocusTimerActive(true);
+          addLog(`Voice Action: Focus timer initiated.`);
+        } else if (act.type === 'stop_timer') {
+          setIsFocusTimerActive(false);
+          addLog(`Voice Action: Focus timer paused.`);
+        } else if (act.type === 'toggle_theme') {
+          setDarkMode(prev => !prev);
+          addLog(`Voice Action: Theme toggled.`);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -2549,6 +2676,51 @@ export default function App() {
       setVoiceLoading(false);
       setVoiceInput('');
     }
+  };
+
+  const startDictation = (target: 'task' | 'sticky' | 'query') => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Speech recognition is not supported in this browser.");
+      return;
+    }
+    const rec = new SpeechRecognition();
+    rec.continuous = false;
+    rec.interimResults = false;
+    rec.lang = 'en-US';
+
+    rec.onstart = () => {
+      addLog(`Listening for ${target} dictation...`);
+      if (target === 'task') setIsDictatingTask(true);
+      if (target === 'sticky') setIsDictatingSticky(true);
+      if (target === 'query') setIsRecording(true);
+    };
+
+    rec.onresult = (event: any) => {
+      const text = event.results[0][0].transcript;
+      addLog(`Dictated text: "${text}"`);
+      if (target === 'task') {
+        setNewTaskTitle(prev => prev ? prev + ' ' + text : text);
+      } else if (target === 'sticky') {
+        setNewStickyText(prev => prev ? prev + '\n' + text : text);
+      } else if (target === 'query') {
+        setVoiceInput(text);
+        handleVoiceSubmit(text);
+      }
+    };
+
+    rec.onerror = (e: any) => {
+      console.error('Dictation error', e);
+      addLog(`Dictation error: ${e.error}`);
+    };
+
+    rec.onend = () => {
+      if (target === 'task') setIsDictatingTask(false);
+      if (target === 'sticky') setIsDictatingSticky(false);
+      if (target === 'query') setIsRecording(false);
+    };
+
+    rec.start();
   };
 
   const handleLoadSampleData = () => {
@@ -3702,138 +3874,36 @@ export default function App() {
                   {/* Synced Lyrics Integration */}
                   {showLyrics && (
                     <div className="mt-3 text-center relative z-20 w-full">
-                      <div className="flex justify-between items-center mb-1.5 pb-1 border-b border-dashed border-neutral-500/10">
-                        <span className="text-[8px] uppercase tracking-wider font-bold text-[#D95D39] font-mono">Synced Lyrics</span>
-                        <button
-                          onClick={() => {
-                            setLyricsValidationError(null);
-                            setIsEditingLyrics(!isEditingLyrics);
-                            setLyricsEditorText(getLyricsForCurrentTrack());
-                          }}
-                          className="text-[8px] text-neutral-400 hover:text-[#D95D39] font-mono hover:underline cursor-pointer"
-                        >
-                          {isEditingLyrics ? "Cancel" : "Edit"}
-                        </button>
-                      </div>
-                      
-                      {isEditingLyrics ? (
-                        <div className="flex flex-col gap-1.5 text-left">
-                          <textarea
-                            value={lyricsEditorText}
-                            onChange={(e) => setLyricsEditorText(e.target.value)}
-                            className={`w-full h-20 text-[9px] font-mono p-1 border rounded resize-none focus:outline-none focus:ring-1 focus:ring-[#D95D39] ${
-                              darkMode ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-white border-neutral-300 text-neutral-800'
-                            }`}
-                            placeholder="Type or paste synced lyrics here. Format: [00:15] Lyric line"
-                          />
-                          {lyricsValidationError && (
-                            <p className="text-[9px] text-red-500 font-mono bg-red-500/10 p-1 rounded border border-red-500/20 leading-snug">
-                              ⚠️ {lyricsValidationError}
-                            </p>
-                          )}
-                          <div className="flex justify-end">
-                            <button
-                              onClick={() => {
-                                const validation = validateLrc(lyricsEditorText);
-                                if (!validation.isValid) {
-                                  setLyricsValidationError(validation.error || "Malformed LRC data");
-                                  return;
-                                }
-                                setLyricsValidationError(null);
-                                const currentTrackName = musicType === 'local' && uploadedTracks[currentTrackIndex]
-                                  ? uploadedTracks[currentTrackIndex].name
-                                  : 'synth_' + synthType;
-                                const updated = { ...trackLyrics, [currentTrackName]: lyricsEditorText };
-                                setTrackLyrics(updated);
-                                localStorage.setItem('focus_track_lyrics', JSON.stringify(updated));
-                                setIsEditingLyrics(false);
-                                addLog(`Lyrics updated for: ${currentTrackName}`);
-                              }}
-                              className="px-2 py-0.5 bg-[#D95D39] text-white text-[8px] font-bold rounded hover:bg-[#c44e2e] cursor-pointer"
-                            >
-                              Save
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="py-1 flex flex-col justify-center items-center min-h-[44px] overflow-hidden">
-                          {isPlayingMusic && (musicType === 'local' || musicType === 'synth') ? (
-                            (() => {
-                              const lyricsText = getLyricsForCurrentTrack();
-                              if (!lyricsText) {
-                                return (
-                                  <div className="text-center w-full animate-fade-in">
-                                    <p className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 italic">
-                                      No synced lyrics found. Upload a matching .lrc file or click Edit.
-                                    </p>
-                                  </div>
-                                );
-                              }
-                              const activeLyric = getActiveLyricLine(lyricsText, songCurrentTime, songDuration);
+                      <div className="py-1 flex flex-col justify-center items-center min-h-[44px] overflow-hidden">
+                        {isPlayingMusic && (musicType === 'local' || musicType === 'synth') ? (
+                          (() => {
+                            const lyricsText = getLyricsForCurrentTrack();
+                            if (!lyricsText) {
                               return (
-                                <AppleMusicLyric
-                                  current={activeLyric.current}
-                                  next={activeLyric.next}
-                                  progress={activeLyric.progress}
-                                  idx={activeLyric.index}
-                                  darkMode={darkMode}
-                                  backdrop={false}
-                                  size="sm"
-                                />
+                                <p className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 italic">
+                                  No synced lyrics found. Upload a matching .lrc file.
+                                </p>
                               );
-                            })()
-                          ) : (
-                            <p className="text-[9px] font-mono opacity-65 italic text-gray-500">
-                              Music is paused. Play music to view synced lyrics.
-                            </p>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Sync Offset Controls */}
-                      {!isEditingLyrics && (
-                        <div className="mt-2 pt-1.5 border-t border-dashed border-neutral-500/10 flex flex-col sm:flex-row items-center justify-between gap-1.5">
-                          <div className="flex items-center gap-1 text-[8px] font-mono text-neutral-400">
-                            <span>Sync:</span>
-                            <button
-                              onClick={() => setLyricsSyncOffset(prev => Math.max(-10, prev - 0.5))}
-                              className="px-1 py-0.2 rounded bg-neutral-500/15 hover:bg-neutral-500/25 transition-all text-[7px] cursor-pointer"
-                              title="Nudge Back 0.5s"
-                            >
-                              -0.5s
-                            </button>
-                            <span className="font-bold text-[#D95D39] min-w-[30px] text-center">
-                              {lyricsSyncOffset > 0 ? `+${lyricsSyncOffset.toFixed(1)}` : lyricsSyncOffset.toFixed(1)}s
-                            </span>
-                            <button
-                              onClick={() => setLyricsSyncOffset(prev => Math.min(10, prev + 0.5))}
-                              className="px-1 py-0.2 rounded bg-neutral-500/15 hover:bg-neutral-500/25 transition-all text-[7px] cursor-pointer"
-                              title="Nudge Forward 0.5s"
-                            >
-                              +0.5s
-                            </button>
-                          </div>
-                          <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                            <input
-                              type="range"
-                              min="-10"
-                              max="10"
-                              step="0.5"
-                              value={lyricsSyncOffset}
-                              onChange={(e) => setLyricsSyncOffset(parseFloat(e.target.value))}
-                              className="w-full sm:w-20 h-1 bg-neutral-500/20 rounded-lg appearance-none cursor-pointer accent-[#D95D39]"
-                            />
-                            {lyricsSyncOffset !== 0 && (
-                              <button
-                                onClick={() => setLyricsSyncOffset(0)}
-                                className="text-[7px] font-mono text-[#D95D39] hover:underline whitespace-nowrap cursor-pointer"
-                              >
-                                Reset
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      )}
+                            }
+                            const activeLyric = getActiveLyricLine(lyricsText, songCurrentTime, songDuration);
+                            return (
+                              <AppleMusicLyric
+                                current={activeLyric.current}
+                                next={activeLyric.next}
+                                progress={activeLyric.progress}
+                                idx={activeLyric.index}
+                                darkMode={activeTheme.mode === 'dark'}
+                                backdrop={false}
+                                size="sm"
+                              />
+                            );
+                          })()
+                        ) : (
+                          <p className="text-[9px] font-mono opacity-65 italic text-gray-500">
+                            Music is paused. Play music to view synced lyrics.
+                          </p>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -4175,12 +4245,79 @@ export default function App() {
               <h2 className="text-xs uppercase tracking-widest font-bold opacity-60 font-mono">
                 Directives & Alerts
               </h2>
-              <span className={`text-[9px] px-2 py-0.5 uppercase font-mono border ${
-                darkMode ? 'bg-neutral-800 text-[#FDFCFB]/70 border-neutral-700' : 'bg-[#1A1A1A] text-white'
-              }`}>
-                Context Feed
-              </span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setShowAddAlertForm(!showAddAlertForm)}
+                  className={`text-[9px] uppercase font-mono px-2 py-0.5 border rounded flex items-center gap-1 transition-colors cursor-pointer ${
+                    darkMode 
+                      ? 'border-neutral-700 hover:bg-neutral-800 text-gray-300 bg-neutral-900' 
+                      : 'border-gray-300 hover:bg-gray-100 text-neutral-700 bg-white'
+                  }`}
+                >
+                  <Plus size={10} />
+                  {showAddAlertForm ? 'Cancel' : 'Add Alert'}
+                </button>
+                <span className={`text-[9px] px-2 py-0.5 uppercase font-mono border ${
+                  darkMode ? 'bg-neutral-800 text-[#FDFCFB]/70 border-neutral-700' : 'bg-[#1A1A1A] text-white'
+                }`}>
+                  Context Feed
+                </span>
+              </div>
             </div>
+
+            {/* ADD ALERT FORM */}
+            {showAddAlertForm && (
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!newAlertText.trim()) return;
+                  const newAlert = {
+                    type: newAlertType || 'Urgent Alert',
+                    text: newAlertText
+                  };
+                  setAlerts(prev => [...prev, newAlert]);
+                  addLog(`Added directive alert: "${newAlert.type}"`);
+                  setNewAlertText('');
+                  setNewAlertType('Urgent Alert');
+                  setShowAddAlertForm(false);
+                }}
+                className={`border p-3 mb-4 space-y-2 text-xs font-mono ${
+                  darkMode ? 'border-neutral-800 bg-neutral-900/50' : 'border-gray-200 bg-neutral-50'
+                }`}
+              >
+                <div className="flex flex-col gap-1">
+                  <label className="text-[9px] text-gray-500 uppercase font-bold">Alert Category</label>
+                  <input
+                    type="text"
+                    value={newAlertType}
+                    onChange={(e) => setNewAlertType(e.target.value)}
+                    placeholder="e.g. Urgent Alert, Health Sync"
+                    className={`px-2 py-1 border rounded w-full ${
+                      darkMode ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-white border-neutral-300 text-neutral-800'
+                    }`}
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[9px] text-gray-500 uppercase font-bold">Message Text</label>
+                  <textarea
+                    value={newAlertText}
+                    onChange={(e) => setNewAlertText(e.target.value)}
+                    placeholder="Type alert description here..."
+                    className={`px-2 py-1 border rounded w-full h-16 resize-none ${
+                      darkMode ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-white border-neutral-300 text-neutral-800'
+                    }`}
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    className="px-3 py-1 bg-[#D95D39] hover:bg-[#c44e2e] text-white text-[10px] font-bold uppercase rounded cursor-pointer"
+                  >
+                    Create Alert
+                  </button>
+                </div>
+              </form>
+            )}
 
             {/* Notification Pills */}
             <div className="space-y-3 mb-6">
@@ -4191,22 +4328,113 @@ export default function App() {
                   Alert status normal. High-priority deadlines synchronized.
                 </div>
               ) : (
-                alerts.map((alert, index) => (
-                  <div
-                    key={index}
-                    className={`border p-4 rounded-none hover:shadow-sm transition-all duration-200 ${
-                      darkMode ? 'border-[#FDFCFB]/10 bg-[#1E1E1E]' : 'border-[#1A1A1A] bg-[#F2F0ED]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5 mb-1.5 text-xs font-bold text-[#D95D39] uppercase tracking-wider font-mono">
-                      <AlertCircle size={12} />
-                      <span>{alert.type}</span>
+                alerts.map((alert, index) => {
+                  const isEditingAlert = editingAlertIndex === index;
+                  if (isEditingAlert) {
+                    return (
+                      <div
+                        key={index}
+                        className={`border p-3 space-y-2 text-xs font-mono ${
+                          darkMode ? 'bg-neutral-950 border-neutral-800' : 'bg-white border-neutral-300'
+                        }`}
+                      >
+                        <div className="space-y-1.5">
+                          <input
+                            type="text"
+                            value={editAlertType}
+                            onChange={(e) => setEditAlertType(e.target.value)}
+                            className={`w-full px-2 py-1 border text-xs font-bold rounded ${
+                              darkMode ? 'bg-neutral-900 border-neutral-800 text-white' : 'bg-gray-50 border-gray-300 text-neutral-800'
+                            }`}
+                            placeholder="Alert Type"
+                          />
+                          <textarea
+                            value={editAlertText}
+                            onChange={(e) => setEditAlertText(e.target.value)}
+                            className={`w-full px-2 py-1 border text-xs rounded h-16 resize-none ${
+                              darkMode ? 'bg-neutral-900 border-neutral-800 text-white' : 'bg-gray-50 border-gray-300 text-neutral-800'
+                            }`}
+                            placeholder="Alert description"
+                          />
+                        </div>
+                        <div className="flex gap-1 justify-end">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingAlertIndex(null);
+                            }}
+                            className="px-2 py-0.5 border border-gray-300 rounded text-[9px] uppercase hover:bg-gray-100 dark:hover:bg-neutral-800"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = [...alerts];
+                              updated[index] = {
+                                type: editAlertType,
+                                text: editAlertText
+                              };
+                              setAlerts(updated);
+                              setEditingAlertIndex(null);
+                              addLog(`Updated alert: "${editAlertType}"`);
+                            }}
+                            className="px-2 py-0.5 bg-[#D95D39] text-white rounded text-[9px] uppercase hover:bg-[#c44e2e]"
+                          >
+                            Save
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={index}
+                      className={`border p-4 rounded-none hover:shadow-sm transition-all duration-200 group relative ${
+                        darkMode ? 'border-[#FDFCFB]/10 bg-[#1E1E1E]' : 'border-[#1A1A1A] bg-[#F2F0ED]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-[#D95D39] uppercase tracking-wider font-mono">
+                          <AlertCircle size={12} />
+                          <span>{alert.type}</span>
+                        </div>
+                        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 transition-opacity absolute right-3 top-3">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingAlertIndex(index);
+                              setEditAlertType(alert.type);
+                              setEditAlertText(alert.text);
+                            }}
+                            className="text-neutral-400 hover:text-[#D95D39] p-0.5 transition-colors cursor-pointer"
+                            title="Edit Alert"
+                          >
+                            <Edit2 size={11} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm(`Delete alert: "${alert.type}"?`)) {
+                                const updated = alerts.filter((_, idx) => idx !== index);
+                                setAlerts(updated);
+                                addLog(`Deleted alert: "${alert.type}"`);
+                              }
+                            }}
+                            className="text-neutral-400 hover:text-red-500 p-0.5 transition-colors cursor-pointer"
+                            title="Delete Alert"
+                          >
+                            <Trash2 size={11} />
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-xs leading-relaxed font-mono pr-12">
+                        {alert.text}
+                      </p>
                     </div>
-                    <p className="text-xs leading-relaxed font-mono">
-                      {alert.text}
-                    </p>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
 
@@ -4997,23 +5225,27 @@ export default function App() {
                               setCustomWorkMin('' as any);
                               return;
                             }
-                            let v = parseInt(valStr, 10);
+                            const v = parseInt(valStr, 10);
                             if (isNaN(v)) return;
-                            if (v < 1) v = 1;
-                            if (v > 900) v = 900;
                             setCustomWorkMin(v);
-                            if (focusTimerMode === 'work') {
+                            
+                            // Only update timer on valid changes while typing
+                            if (v >= 1 && v <= 900 && focusTimerMode === 'work') {
                               setFocusTimeLeft(v * 60);
                               setFocusTimeTotal(v * 60);
                             }
                           }}
                           onBlur={() => {
-                            if (!customWorkMin || isNaN(customWorkMin as any)) {
-                              setCustomWorkMin(25);
-                              if (focusTimerMode === 'work') {
-                                setFocusTimeLeft(25 * 60);
-                                setFocusTimeTotal(25 * 60);
-                              }
+                            let v = parseInt(customWorkMin as any, 10);
+                            if (isNaN(v) || v < 1) {
+                              v = 25;
+                            } else if (v > 900) {
+                              v = 900;
+                            }
+                            setCustomWorkMin(v);
+                            if (focusTimerMode === 'work') {
+                              setFocusTimeLeft(v * 60);
+                              setFocusTimeTotal(v * 60);
                             }
                           }}
                           className={`w-full px-2.5 py-1.5 border text-xs focus:outline-none ${
@@ -5034,23 +5266,27 @@ export default function App() {
                               setCustomBreakMin('' as any);
                               return;
                             }
-                            let v = parseInt(valStr, 10);
+                            const v = parseInt(valStr, 10);
                             if (isNaN(v)) return;
-                            if (v < 1) v = 1;
-                            if (v > 900) v = 900;
                             setCustomBreakMin(v);
-                            if (focusTimerMode === 'break') {
+                            
+                            // Only update timer on valid changes while typing
+                            if (v >= 1 && v <= 900 && focusTimerMode === 'break') {
                               setFocusTimeLeft(v * 60);
                               setFocusTimeTotal(v * 60);
                             }
                           }}
                           onBlur={() => {
-                            if (!customBreakMin || isNaN(customBreakMin as any)) {
-                              setCustomBreakMin(5);
-                              if (focusTimerMode === 'break') {
-                                setFocusTimeLeft(5 * 60);
-                                setFocusTimeTotal(5 * 60);
-                              }
+                            let v = parseInt(customBreakMin as any, 10);
+                            if (isNaN(v) || v < 1) {
+                              v = 5;
+                            } else if (v > 900) {
+                              v = 900;
+                            }
+                            setCustomBreakMin(v);
+                            if (focusTimerMode === 'break') {
+                              setFocusTimeLeft(v * 60);
+                              setFocusTimeTotal(v * 60);
                             }
                           }}
                           className={`w-full px-2.5 py-1.5 border text-xs focus:outline-none ${
@@ -5750,93 +5986,38 @@ export default function App() {
                         {/* Synced Lyrics Integration */}
                         {showLyrics && (
                           <div className="mt-3 text-center relative w-full">
-                            <div className="flex justify-between items-center mb-2 pb-1 border-b border-dashed border-neutral-500/10">
-                              <span className="text-[9px] uppercase tracking-wider font-bold text-[#D95D39] font-mono">Synced Lyrics</span>
-                              <button
-                                onClick={() => {
-                                  setLyricsValidationError(null);
-                                  setIsEditingLyrics(!isEditingLyrics);
-                                  setLyricsEditorText(getLyricsForCurrentTrack());
-                                }}
-                                className="text-[9px] text-neutral-400 hover:text-[#D95D39] font-mono hover:underline cursor-pointer"
-                              >
-                                {isEditingLyrics ? "Cancel" : "Edit Lyrics"}
-                              </button>
-                            </div>
-                            
-                            {isEditingLyrics ? (
-                              <div className="flex flex-col gap-2 text-left">
-                                <textarea
-                                  value={lyricsEditorText}
-                                  onChange={(e) => setLyricsEditorText(e.target.value)}
-                                  className={`w-full h-24 text-[10px] font-mono p-2 border rounded resize-none focus:outline-none focus:ring-1 focus:ring-[#D95D39] ${
-                                    darkMode ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-white border-neutral-300 text-neutral-800'
-                                  }`}
-                                  placeholder="Type or paste synced lyrics here. Format: [00:15] Lyric line"
-                                />
-                                {lyricsValidationError && (
-                                  <p className="text-[10px] text-red-500 font-mono bg-red-500/10 p-1.5 rounded border border-red-500/20 leading-snug">
-                                    ⚠️ {lyricsValidationError}
-                                  </p>
-                                )}
-                                <div className="flex justify-end">
-                                  <button
-                                    onClick={() => {
-                                      const validation = validateLrc(lyricsEditorText);
-                                      if (!validation.isValid) {
-                                        setLyricsValidationError(validation.error || "Malformed LRC data");
-                                        return;
-                                      }
-                                      setLyricsValidationError(null);
-                                      const currentTrackName = musicType === 'local' && uploadedTracks[currentTrackIndex]
-                                        ? uploadedTracks[currentTrackIndex].name
-                                        : 'synth_' + synthType;
-                                      const updated = { ...trackLyrics, [currentTrackName]: lyricsEditorText };
-                                      setTrackLyrics(updated);
-                                      localStorage.setItem('focus_track_lyrics', JSON.stringify(updated));
-                                      setIsEditingLyrics(false);
-                                      addLog(`Lyrics updated for: ${currentTrackName}`);
-                                    }}
-                                    className="px-3 py-1 bg-[#D95D39] text-white text-[10px] font-bold rounded hover:bg-[#c44e2e] cursor-pointer"
-                                  >
-                                    Save Lyrics
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="py-2 flex flex-col justify-center items-center min-h-[52px] overflow-hidden">
-                                {isPlayingMusic && (musicType === 'local' || musicType === 'synth') ? (
-                                  (() => {
-                                    const lyricsText = getLyricsForCurrentTrack();
-                                    if (!lyricsText) {
-                                      return (
-                                        <div className="text-center w-full animate-fade-in">
-                                          <p className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 italic">
-                                            No synced lyrics found. Upload a matching .lrc file or click Edit.
-                                          </p>
-                                        </div>
-                                      );
-                                    }
-                                    const activeLyric = getActiveLyricLine(lyricsText, songCurrentTime, songDuration);
+                            <div className="py-2 flex flex-col justify-center items-center min-h-[52px] overflow-hidden">
+                              {isPlayingMusic && (musicType === 'local' || musicType === 'synth') ? (
+                                (() => {
+                                  const lyricsText = getLyricsForCurrentTrack();
+                                  if (!lyricsText) {
                                     return (
-                                      <AppleMusicLyric
-                                        current={activeLyric.current}
-                                        next={activeLyric.next}
-                                        progress={activeLyric.progress}
-                                        idx={activeLyric.index}
-                                        darkMode={darkMode}
-                                        backdrop={false}
-                                        size="sm"
-                                      />
+                                      <div className="text-center w-full animate-fade-in">
+                                        <p className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 italic">
+                                          No synced lyrics found. Upload a matching .lrc file.
+                                        </p>
+                                      </div>
                                     );
-                                  })()
-                                ) : (
-                                  <p className="text-[10px] font-mono opacity-65 italic text-gray-500">
-                                    Music is paused. Play music to view synced lyrics.
-                                  </p>
-                                )}
-                              </div>
-                            )}
+                                  }
+                                  const activeLyric = getActiveLyricLine(lyricsText, songCurrentTime, songDuration);
+                                  return (
+                                    <AppleMusicLyric
+                                      current={activeLyric.current}
+                                      next={activeLyric.next}
+                                      progress={activeLyric.progress}
+                                      idx={activeLyric.index}
+                                      darkMode={activeTheme.mode === 'dark'}
+                                      backdrop={false}
+                                      size="sm"
+                                    />
+                                  );
+                                })()
+                              ) : (
+                                <p className="text-[10px] font-mono opacity-65 italic text-gray-500">
+                                  Music is paused. Play music to view synced lyrics.
+                                </p>
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>
