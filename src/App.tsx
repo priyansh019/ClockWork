@@ -43,7 +43,16 @@ import {
   RotateCcw,
   VolumeX,
   UserCheck,
-  Palette
+  Palette,
+  Users,
+  Disc,
+  Music,
+  Volume2,
+  Maximize2,
+  Minimize2,
+  Repeat,
+  SkipForward,
+  SkipBack
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -215,12 +224,100 @@ interface TimetableItem {
   priority: 'high' | 'medium' | 'low';
 }
 
+interface Friend {
+  username: string;
+  name: string;
+  streak: number;
+  completedToday: number;
+  totalToday: number;
+  activeStatus: string;
+  role: 'student' | 'work' | 'personal';
+  schoolOrCompany: string;
+}
+
 export default function App() {
   // --- USER AUTHENTICATION STATE ---
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
     const saved = localStorage.getItem('cw_user');
     return saved ? JSON.parse(saved) : null;
   });
+
+  // --- SOCIAL COMPETE & FRIENDS STATE ---
+  const [friends, setFriends] = useState<Friend[]>(() => {
+    const saved = localStorage.getItem('cw_friends');
+    if (saved) return JSON.parse(saved);
+    return [
+      { username: 'alex_r', name: 'Alex Rivera', streak: 12, completedToday: 4, totalToday: 5, activeStatus: 'Studying Chemistry', role: 'student', schoolOrCompany: 'Stanford University' },
+      { username: 'jane_d', name: 'Jane Doe', streak: 15, completedToday: 6, totalToday: 7, activeStatus: 'Sprinting Q3 Backend', role: 'work', schoolOrCompany: 'Google LLC' },
+      { username: 'mark_s', name: 'Mark Snyder', streak: 8, completedToday: 3, totalToday: 5, activeStatus: 'Reading Docs', role: 'personal', schoolOrCompany: 'Self-Employed' }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('cw_friends', JSON.stringify(friends));
+  }, [friends]);
+
+  const [newFriendUsername, setNewFriendUsername] = useState('');
+  const [addFriendError, setAddFriendError] = useState('');
+  const [addFriendSuccess, setAddFriendSuccess] = useState('');
+
+  // --- FOCUS MUSIC & AUDIO SOUNDSCAPE STATES ---
+  const [isPlayingMusic, setIsPlayingMusic] = useState(false);
+  const [musicType, setMusicType] = useState<'none' | 'synth' | 'local'>('none');
+  const [synthType, setSynthType] = useState<'rain' | 'drone' | 'chimes'>('rain');
+  const [localFileName, setLocalFileName] = useState('');
+  const [uploadedTracks, setUploadedTracks] = useState<{ name: string; url: string }[]>([]);
+  const [currentTrackIndex, setCurrentTrackIndex] = useState<number>(0);
+  const [musicVolume, setMusicVolume] = useState(0.5);
+  const [isLoopingMusic, setIsLoopingMusic] = useState(false);
+  const [songCurrentTime, setSongCurrentTime] = useState(0);
+  const [songDuration, setSongDuration] = useState(0);
+
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const synthNodesRef = useRef<any[]>([]);
+  const chimeIntervalRef = useRef<any>(null);
+  const localAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  // --- IMMERSIVE FOCUS DECK & BOX BREATHING STATES ---
+  const [isFullscreenFocus, setIsFullscreenFocus] = useState(false);
+  const [isImmersiveMinimal, setIsImmersiveMinimal] = useState(false);
+  const [selectedCompareFriend, setSelectedCompareFriend] = useState<Friend | null>(null);
+  const [focusClockStyle, setFocusClockStyle] = useState<'digital' | 'analog' | 'calendar'>('digital');
+  const [breathingTick, setBreathingTick] = useState(0);
+  const [breathingPhase, setBreathingPhase] = useState<'Inhale' | 'Hold' | 'Exhale' | 'Hold (Empty)'>('Inhale');
+  const [localTime, setLocalTime] = useState<Date>(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setLocalTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    let interval: any = null;
+    if (isFullscreenFocus) {
+      interval = setInterval(() => {
+        setBreathingTick(prev => {
+          const next = (prev + 1) % 16;
+          if (next >= 0 && next < 4) {
+            setBreathingPhase('Inhale');
+          } else if (next >= 4 && next < 8) {
+            setBreathingPhase('Hold');
+          } else if (next >= 8 && next < 12) {
+            setBreathingPhase('Exhale');
+          } else {
+            setBreathingPhase('Hold (Empty)');
+          }
+          return next;
+        });
+      }, 1000);
+    } else {
+      setBreathingTick(0);
+      setBreathingPhase('Inhale');
+    }
+    return () => clearInterval(interval);
+  }, [isFullscreenFocus]);
 
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
@@ -267,7 +364,7 @@ export default function App() {
   });
 
   // --- TAB NAVIGATION STATE ---
-  const [activeTab, setActiveTab] = useState<'home' | 'analytics' | 'timetable' | 'settings'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'analytics' | 'focus' | 'timetable' | 'friends' | 'settings'>('home');
 
   // --- THEME STATE ---
   const [themeId, setThemeId] = useState<string>(() => {
@@ -514,7 +611,288 @@ export default function App() {
     localStorage.setItem('cw_chart_chat', JSON.stringify(chartChatMessages));
   }, [chartChatMessages]);
 
+  // Auto-select first friend if none selected
+  useEffect(() => {
+    if (!selectedCompareFriend && friends.length > 0) {
+      setSelectedCompareFriend(friends[0]);
+    }
+  }, [friends, selectedCompareFriend]);
+
+  // Escape key to close immersive focus deck
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsFullscreenFocus(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Synchronize song time and duration for seekbar
+  useEffect(() => {
+    const audio = localAudioRef.current;
+    if (!audio) return;
+    const updateTime = () => {
+      setSongCurrentTime(audio.currentTime);
+    };
+    const updateDuration = () => {
+      setSongDuration(audio.duration || 0);
+    };
+    audio.addEventListener('timeupdate', updateTime);
+    audio.addEventListener('loadedmetadata', updateDuration);
+    return () => {
+      audio.removeEventListener('timeupdate', updateTime);
+      audio.removeEventListener('loadedmetadata', updateDuration);
+    };
+  }, [uploadedTracks, currentTrackIndex]);
+
   // --- AUDIO SYNTHESIZER ---
+  const getAudioContext = (): AudioContext => {
+    if (!audioCtxRef.current) {
+      const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+      audioCtxRef.current = new AudioCtxClass();
+    }
+    if (audioCtxRef.current.state === 'suspended') {
+      audioCtxRef.current.resume();
+    }
+    return audioCtxRef.current;
+  };
+
+  const stopAllSynth = () => {
+    if (chimeIntervalRef.current) {
+      clearInterval(chimeIntervalRef.current);
+      chimeIntervalRef.current = null;
+    }
+    synthNodesRef.current.forEach(node => {
+      try {
+        node.stop();
+      } catch (e) {}
+    });
+    synthNodesRef.current = [];
+  };
+
+  const startSynthAudio = (type: 'rain' | 'drone' | 'chimes') => {
+    try {
+      stopAllSynth();
+      const ctx = getAudioContext();
+      const masterGain = ctx.createGain();
+      masterGain.gain.setValueAtTime(musicVolume, ctx.currentTime);
+      masterGain.connect(ctx.destination);
+
+      if (type === 'rain') {
+        const bufferSize = ctx.sampleRate * 2;
+        const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          output[i] = Math.random() * 2 - 1;
+        }
+        const whiteNoise = ctx.createBufferSource();
+        whiteNoise.buffer = noiseBuffer;
+        whiteNoise.loop = true;
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(550, ctx.currentTime);
+
+        whiteNoise.connect(filter);
+        filter.connect(masterGain);
+        whiteNoise.start();
+
+        synthNodesRef.current.push(whiteNoise);
+        addLog("Ambient audio: Gentle Rain synthesizer activated.");
+      } else if (type === 'drone') {
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        osc1.type = 'sawtooth';
+        osc2.type = 'triangle';
+        osc1.frequency.setValueAtTime(85, ctx.currentTime);
+        osc2.frequency.setValueAtTime(85.6, ctx.currentTime);
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(160, ctx.currentTime);
+
+        const lfo = ctx.createOscillator();
+        const lfoGain = ctx.createGain();
+        lfo.frequency.setValueAtTime(0.08, ctx.currentTime);
+        lfoGain.gain.setValueAtTime(35, ctx.currentTime);
+
+        lfo.connect(lfoGain);
+        lfoGain.connect(filter.frequency);
+
+        osc1.connect(filter);
+        osc2.connect(filter);
+        filter.connect(masterGain);
+
+        lfo.start();
+        osc1.start();
+        osc2.start();
+
+        synthNodesRef.current.push(osc1, osc2, lfo);
+        addLog("Ambient audio: Space Drone synthesizer activated.");
+      } else if (type === 'chimes') {
+        const pentatonic = [329.63, 392.00, 440.00, 523.25, 587.33, 659.25];
+        const triggerChime = () => {
+          if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') return;
+          const tone = pentatonic[Math.floor(Math.random() * pentatonic.length)];
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(tone, ctx.currentTime);
+
+          gain.gain.setValueAtTime(0, ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.12 * musicVolume, ctx.currentTime + 0.1);
+          gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 4.5);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc.start();
+          osc.stop(ctx.currentTime + 5.0);
+        };
+
+        triggerChime();
+        chimeIntervalRef.current = setInterval(triggerChime, 3000);
+        addLog("Ambient audio: Serene Zen Chimes scheduler activated.");
+      }
+    } catch (err) {
+      console.error("Failed to start synthesizer audio:", err);
+    }
+  };
+
+  const handleTogglePlayMusic = () => {
+    if (isPlayingMusic) {
+      setIsPlayingMusic(false);
+      if (musicType === 'synth') {
+        stopAllSynth();
+      } else if (musicType === 'local') {
+        if (localAudioRef.current) {
+          localAudioRef.current.pause();
+        }
+      }
+      addLog("Ambient background music paused.");
+    } else {
+      setIsPlayingMusic(true);
+      if (musicType === 'synth') {
+        startSynthAudio(synthType);
+      } else if (musicType === 'local') {
+        if (localAudioRef.current) {
+          localAudioRef.current.play().catch(e => {
+            console.error("Local audio playback aborted:", e);
+          });
+        }
+      } else {
+        setMusicType('synth');
+        setSynthType('rain');
+        startSynthAudio('rain');
+      }
+      addLog("Ambient background music playing.");
+    }
+  };
+
+  const handleSeekChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const time = parseFloat(e.target.value);
+    setSongCurrentTime(time);
+    if (localAudioRef.current) {
+      localAudioRef.current.currentTime = time;
+    }
+  };
+
+  const handleNextTrack = () => {
+    if (uploadedTracks.length === 0) return;
+    const nextIndex = (currentTrackIndex + 1) % uploadedTracks.length;
+    setCurrentTrackIndex(nextIndex);
+    if (localAudioRef.current) {
+      localAudioRef.current.src = uploadedTracks[nextIndex].url;
+      localAudioRef.current.volume = musicVolume;
+      if (isPlayingMusic) {
+        localAudioRef.current.play().catch(err => console.log("Failed autoplay:", err));
+      }
+    }
+    addLog(`Skipped to next track: ${uploadedTracks[nextIndex].name}`);
+  };
+
+  const handlePrevTrack = () => {
+    if (uploadedTracks.length === 0) return;
+    const prevIndex = (currentTrackIndex - 1 + uploadedTracks.length) % uploadedTracks.length;
+    setCurrentTrackIndex(prevIndex);
+    if (localAudioRef.current) {
+      localAudioRef.current.src = uploadedTracks[prevIndex].url;
+      localAudioRef.current.volume = musicVolume;
+      if (isPlayingMusic) {
+        localAudioRef.current.play().catch(err => console.log("Failed autoplay:", err));
+      }
+    }
+    addLog(`Skipped to previous track: ${uploadedTracks[prevIndex].name}`);
+  };
+
+  const handleMusicUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const newTracks: { name: string; url: string }[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (file.type.startsWith('audio/') || file.name.endsWith('.mp3') || file.name.endsWith('.wav') || file.name.endsWith('.ogg') || file.name.endsWith('.m4a')) {
+        const url = URL.createObjectURL(file);
+        newTracks.push({
+          name: file.name,
+          url: url
+        });
+      }
+    }
+
+    if (newTracks.length > 0) {
+      const existingCount = uploadedTracks.length;
+      const updated = [...uploadedTracks, ...newTracks];
+      setUploadedTracks(updated);
+      addLog(`Loaded ${newTracks.length} music track(s) to playlist.`);
+
+      if (musicType !== 'local') {
+        setMusicType('local');
+        setCurrentTrackIndex(existingCount);
+        setIsPlayingMusic(true);
+        if (localAudioRef.current) {
+          localAudioRef.current.src = newTracks[0].url;
+          localAudioRef.current.volume = musicVolume;
+          localAudioRef.current.play().catch(err => console.log("Failed autoplay:", err));
+        }
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (localAudioRef.current) {
+      localAudioRef.current.volume = musicVolume;
+    }
+    if (isPlayingMusic && musicType === 'synth') {
+      startSynthAudio(synthType);
+    }
+  }, [musicVolume]);
+
+  useEffect(() => {
+    const audio = localAudioRef.current;
+    if (!audio) return;
+    const handleEnded = () => {
+      if (uploadedTracks.length > 1) {
+        const nextIndex = (currentTrackIndex + 1) % uploadedTracks.length;
+        setCurrentTrackIndex(nextIndex);
+        audio.src = uploadedTracks[nextIndex].url;
+        audio.volume = musicVolume;
+        audio.play().catch(v => console.log("Playlist autoplay failed:", v));
+        addLog(`Autoplaying next track: ${uploadedTracks[nextIndex].name}`);
+      } else {
+        setIsPlayingMusic(false);
+      }
+    };
+    audio.addEventListener('ended', handleEnded);
+    return () => {
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, [uploadedTracks, currentTrackIndex, musicVolume]);
+
   const playZenChime = () => {
     try {
       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -873,13 +1251,11 @@ export default function App() {
   };
 
   const handleSignOut = () => {
-    if (confirm('Are you sure you want to log out of ClockWork?')) {
-      localStorage.removeItem('cw_user');
-      setCurrentUser(null);
-      setAuthEmail('');
-      setAuthPassword('');
-      addLog('Logged out from workspace.');
-    }
+    localStorage.removeItem('cw_user');
+    setCurrentUser(null);
+    setAuthEmail('');
+    setAuthPassword('');
+    addLog('Logged out from workspace.');
   };
 
   // --- SPEECH SERVICES ---
@@ -1811,6 +2187,732 @@ export default function App() {
     <div className={`min-h-screen flex flex-col antialiased transition-all duration-300 ${
       activeTheme.bg
     } ${activeTheme.text} ${activeTheme.font}`}>
+
+      {/* IMMERSIVE FOCUS DECK OVERLAY */}
+      {isFullscreenFocus && (
+        <div className={`fixed inset-0 z-50 flex flex-col justify-between p-6 sm:p-12 animate-fade-in ${activeTheme.bg} ${activeTheme.text} ${activeTheme.font}`}>
+          
+          {/* Top Row: Minimal Toggle, Status, Exit */}
+          <div className={`flex justify-between items-center border-b pb-4 ${darkMode ? 'border-neutral-800' : 'border-neutral-200'}`}>
+            <div className="flex items-center gap-3">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#D95D39] animate-pulse"></span>
+              <span className="text-[10px] tracking-widest uppercase opacity-70">Focus Chamber Active</span>
+            </div>
+
+            <div className="flex items-center gap-4">
+              {/* Minimalist View Toggle */}
+              <button
+                onClick={() => setIsImmersiveMinimal(!isImmersiveMinimal)}
+                className={`px-3 py-1.5 border text-xs uppercase tracking-wider rounded-md transition-colors cursor-pointer ${
+                  darkMode ? 'border-neutral-700 hover:bg-neutral-800 text-gray-300' : 'border-neutral-300 hover:bg-neutral-100 text-gray-700'
+                }`}
+              >
+                {isImmersiveMinimal ? "Show Controls" : "Minimal View"}
+              </button>
+
+              {/* Exit Deck Button */}
+              <button
+                onClick={() => setIsFullscreenFocus(false)}
+                className="p-1.5 border border-red-500 text-red-500 hover:bg-red-500/15 rounded-md transition-all flex items-center gap-1.5 text-xs uppercase tracking-wider cursor-pointer"
+                title="Exit Immersive Focus Deck (Or press ESC)"
+              >
+                <X size={14} />
+                <span className="hidden sm:inline">Exit</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Central Workspace Grid / Content */}
+          {!isImmersiveMinimal ? (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 w-full max-w-6xl mx-auto items-center flex-1 my-4">
+              {/* LEFT COLUMN: Small Thought Box */}
+              <div className="lg:col-span-3 flex flex-col justify-center">
+                <div className={`border p-4 rounded-lg shadow-sm border-dashed ${darkMode ? 'border-neutral-800 bg-[#161616]' : 'border-neutral-200 bg-white'}`}>
+                  <span className="text-[10px] uppercase tracking-widest text-[#D95D39] block mb-2 font-mono font-bold">
+                    Today's Directing Thought
+                  </span>
+                  <p className="font-serif italic text-xs md:text-sm opacity-90 leading-relaxed">
+                    "{dailyEthos?.ethos || "Focus is the art of eliminating the non-essential."}"
+                  </p>
+                  {dailyEthos?.author && (
+                    <p className="text-[9px] uppercase tracking-wider font-bold opacity-60 mt-2 font-mono text-[#D95D39]">
+                      — {dailyEthos.author}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* CENTER COLUMN: Central Clock (Digital, Analog, or Calendar Flipping Deck) */}
+              <div className="lg:col-span-6 flex flex-col items-center justify-center py-4">
+                {focusClockStyle === 'digital' && (
+                  <div className="flex flex-col items-center animate-fade-in w-full text-center">
+                    <span className="text-[10px] uppercase tracking-widest opacity-60 font-mono mb-2">
+                      {focusTimerMode === 'work' ? '⚡ Time to Commit' : '☕ Break In Progress'}
+                    </span>
+                    
+                    <div className="font-sans font-black text-6xl sm:text-7xl md:text-8xl lg:text-9xl tracking-tighter text-[#D95D39] tabular-nums leading-none">
+                      {Math.floor(focusTimeLeft / 60).toString().padStart(2, '0')}:
+                      {(focusTimeLeft % 60).toString().padStart(2, '0')}
+                    </div>
+
+                    <div className="w-full max-w-[280px] bg-neutral-500/15 h-2.5 mt-6 relative overflow-hidden rounded-full border border-neutral-500/10">
+                      <div
+                        className="bg-[#D95D39] h-full transition-all duration-1000"
+                        style={{ width: `${(focusTimeLeft / focusTimeTotal) * 100}%` }}
+                      />
+                    </div>
+
+                    <div className="mt-6 flex items-center gap-3 bg-[#D95D39]/10 border border-[#D95D39]/20 px-4 py-2 rounded-none animate-pulse">
+                      <span className="w-2.5 h-2.5 bg-[#D95D39] rounded-full"></span>
+                      <span className="text-[10px] font-mono uppercase font-bold tracking-wider text-[#D95D39]">
+                        Box Breath: {breathingPhase} ({ (breathingTick % 4) + 1 }s)
+                      </span>
+                    </div>
+
+                    {/* Integrated Focus Timer Interactive Controls */}
+                    <div className="flex items-center gap-3 mt-6">
+                      <button
+                        onClick={() => setIsFocusTimerActive(!isFocusTimerActive)}
+                        className={`px-4 py-2 border rounded-full text-xs font-mono uppercase tracking-wider font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                          isFocusTimerActive 
+                            ? 'border-neutral-500 bg-neutral-800 text-white hover:bg-neutral-700' 
+                            : 'border-[#D95D39] bg-[#D95D39] text-white hover:bg-[#c44e2e]'
+                        }`}
+                        title={isFocusTimerActive ? "Pause Focus" : "Start Focus"}
+                      >
+                        {isFocusTimerActive ? (
+                          <>
+                            <Pause size={12} fill="currentColor" />
+                            <span>Pause</span>
+                          </>
+                        ) : (
+                          <>
+                            <Play size={12} fill="currentColor" />
+                            <span>Start</span>
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setIsFocusTimerActive(false);
+                          const original = focusTimerMode === 'work' ? customWorkMin : customBreakMin;
+                          setFocusTimeLeft(original * 60);
+                          setFocusTimeTotal(original * 60);
+                          addLog('Focus timer reset from Immersive Deck.');
+                        }}
+                        className={`px-3.5 py-2 border rounded-full text-xs font-mono uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
+                          darkMode ? 'border-neutral-700 hover:border-neutral-500 hover:bg-neutral-800 text-neutral-300' : 'border-neutral-300 hover:border-neutral-400 hover:bg-neutral-100 text-neutral-700'
+                        }`}
+                        title="Reset Timer"
+                      >
+                        <RotateCcw size={12} />
+                        <span>Reset</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setIsFocusTimerActive(false);
+                          if (focusTimerMode === 'work') {
+                            setFocusTimerMode('break');
+                            setFocusTimeLeft(customBreakMin * 60);
+                            setFocusTimeTotal(customBreakMin * 60);
+                            addLog('Focus session skipped to Break from Immersive Deck.');
+                          } else {
+                            setFocusTimerMode('work');
+                            setFocusTimeLeft(customWorkMin * 60);
+                            setFocusTimeTotal(customWorkMin * 60);
+                            addLog('Break skipped to Focus from Immersive Deck.');
+                          }
+                        }}
+                        className={`px-3.5 py-2 border rounded-full text-xs font-mono uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
+                          darkMode ? 'border-neutral-700 hover:border-neutral-500 hover:bg-neutral-800 text-neutral-300' : 'border-neutral-300 hover:border-neutral-400 hover:bg-neutral-100 text-neutral-700'
+                        }`}
+                        title="Skip Session"
+                      >
+                        <SkipForward size={12} fill="currentColor" />
+                        <span>Skip</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {focusClockStyle === 'analog' && (
+                  <div className="flex flex-col items-center animate-fade-in w-full text-center">
+                    <span className="text-[10px] uppercase tracking-widest opacity-50 font-mono mb-3">
+                      Synchronized Chronometer
+                    </span>
+
+                    <div className="relative w-48 h-48 sm:w-56 sm:h-56 mb-4">
+                      <svg className="w-full h-full" viewBox="0 0 240 240">
+                        <circle cx="120" cy="120" r="110" className={darkMode ? 'fill-neutral-900 stroke-neutral-800' : 'fill-white stroke-neutral-900'} strokeWidth="4" />
+                        
+                        <circle
+                          cx="120"
+                          cy="120"
+                          r="105"
+                          fill="none"
+                          stroke="#D95D39"
+                          strokeWidth="4"
+                          strokeDasharray={`${2 * Math.PI * 105}`}
+                          strokeDashoffset={`${2 * Math.PI * 105 * (1 - focusTimeLeft / focusTimeTotal)}`}
+                          transform="rotate(-90, 120, 120)"
+                          className="transition-all duration-1000 opacity-80"
+                        />
+
+                        <circle cx="120" cy="120" r="4.5" className="fill-[#D95D39]" />
+
+                        {Array.from({ length: 12 }).map((_, i) => {
+                          const angle = (i * 30 * Math.PI) / 180;
+                          const x1 = 120 + 95 * Math.sin(angle);
+                          const y1 = 120 - 95 * Math.cos(angle);
+                          const x2 = 120 + 105 * Math.sin(angle);
+                          const y2 = 120 - 105 * Math.cos(angle);
+                          return (
+                            <line
+                              key={i}
+                              x1={x1}
+                              y1={y1}
+                              x2={x2}
+                              y2={y2}
+                              className={darkMode ? 'stroke-neutral-700' : 'stroke-neutral-400'}
+                              strokeWidth={i % 3 === 0 ? "3" : "1.5"}
+                            />
+                          );
+                        })}
+
+                        {(() => {
+                          const h = localTime.getHours();
+                          const m = localTime.getMinutes();
+                          const angle = ((h % 12) * 30) + (m * 0.5);
+                          return (
+                            <line
+                              x1="120"
+                              y1="120"
+                              x2={120 + 55 * Math.sin((angle * Math.PI) / 180)}
+                              y2={120 - 55 * Math.cos((angle * Math.PI) / 180)}
+                              className={darkMode ? 'stroke-white' : 'stroke-[#1a1a1a]'}
+                              strokeWidth="4.5"
+                              strokeLinecap="round"
+                            />
+                          );
+                        })()}
+
+                        {(() => {
+                          const m = localTime.getMinutes();
+                          const s = localTime.getSeconds();
+                          const angle = (m * 6) + (s * 0.1);
+                          return (
+                            <line
+                              x1="120"
+                              y1="120"
+                              x2={120 + 80 * Math.sin((angle * Math.PI) / 180)}
+                              y2={120 - 80 * Math.cos((angle * Math.PI) / 180)}
+                              className={darkMode ? 'stroke-neutral-300' : 'stroke-neutral-700'}
+                              strokeWidth="3"
+                              strokeLinecap="round"
+                            />
+                          );
+                        })()}
+
+                        {(() => {
+                          const s = localTime.getSeconds();
+                          const angle = s * 6;
+                          return (
+                            <line
+                              x1="120"
+                              y1="120"
+                              x2={120 + 88 * Math.sin((angle * Math.PI) / 180)}
+                              y2={120 - 88 * Math.cos((angle * Math.PI) / 180)}
+                              stroke="#D95D39"
+                              strokeWidth="1"
+                              strokeLinecap="round"
+                            />
+                          );
+                        })()}
+                      </svg>
+                    </div>
+
+                    <div className="font-mono font-bold text-base text-[#D95D39] bg-neutral-500/5 px-4 py-1 border border-neutral-500/10 rounded mb-4">
+                      TIMER: {Math.floor(focusTimeLeft / 60).toString().padStart(2, '0')}:
+                      {(focusTimeLeft % 60).toString().padStart(2, '0')}
+                    </div>
+
+                    {/* Integrated Focus Timer Interactive Controls */}
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => setIsFocusTimerActive(!isFocusTimerActive)}
+                        className={`px-4 py-2 border rounded-full text-xs font-mono uppercase tracking-wider font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                          isFocusTimerActive 
+                            ? 'border-neutral-500 bg-neutral-800 text-white hover:bg-neutral-700' 
+                            : 'border-[#D95D39] bg-[#D95D39] text-white hover:bg-[#c44e2e]'
+                        }`}
+                        title={isFocusTimerActive ? "Pause Focus" : "Start Focus"}
+                      >
+                        {isFocusTimerActive ? (
+                          <>
+                            <Pause size={12} fill="currentColor" />
+                            <span>Pause</span>
+                          </>
+                        ) : (
+                          <>
+                            <Play size={12} fill="currentColor" />
+                            <span>Start</span>
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setIsFocusTimerActive(false);
+                          const original = focusTimerMode === 'work' ? customWorkMin : customBreakMin;
+                          setFocusTimeLeft(original * 60);
+                          setFocusTimeTotal(original * 60);
+                          addLog('Focus timer reset from Immersive Deck.');
+                        }}
+                        className={`px-3.5 py-2 border rounded-full text-xs font-mono uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
+                          darkMode ? 'border-neutral-700 hover:border-neutral-500 hover:bg-neutral-800 text-neutral-300' : 'border-neutral-300 hover:border-neutral-400 hover:bg-neutral-100 text-neutral-700'
+                        }`}
+                        title="Reset Timer"
+                      >
+                        <RotateCcw size={12} />
+                        <span>Reset</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setIsFocusTimerActive(false);
+                          if (focusTimerMode === 'work') {
+                            setFocusTimerMode('break');
+                            setFocusTimeLeft(customBreakMin * 60);
+                            setFocusTimeTotal(customBreakMin * 60);
+                            addLog('Focus session skipped to Break from Immersive Deck.');
+                          } else {
+                            setFocusTimerMode('work');
+                            setFocusTimeLeft(customWorkMin * 60);
+                            setFocusTimeTotal(customWorkMin * 60);
+                            addLog('Break skipped to Focus from Immersive Deck.');
+                          }
+                        }}
+                        className={`px-3.5 py-2 border rounded-full text-xs font-mono uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
+                          darkMode ? 'border-neutral-700 hover:border-neutral-500 hover:bg-neutral-800 text-neutral-300' : 'border-neutral-300 hover:border-neutral-400 hover:bg-neutral-100 text-neutral-700'
+                        }`}
+                        title="Skip Session"
+                      >
+                        <SkipForward size={12} fill="currentColor" />
+                        <span>Skip</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {focusClockStyle === 'calendar' && (
+                  <div className="flex flex-col items-center animate-fade-in w-full text-center">
+                    <div className="flex flex-row items-center justify-center gap-3 sm:gap-4 w-full max-w-lg mb-4">
+                      {/* Hour Deck Card */}
+                      <div className={`relative border w-20 sm:w-24 p-2 flex flex-col items-center justify-between shadow-lg text-center rounded-lg ${
+                        darkMode ? 'border-neutral-800 bg-neutral-900/95 text-white' : 'border-neutral-300 bg-[#fdfaf2] text-neutral-800'
+                      }`}>
+                        <div className="absolute -top-2 left-0 right-0 flex justify-around px-2">
+                          <span className="w-1.5 h-3 bg-neutral-400 rounded-full border border-neutral-500 shadow-inner"></span>
+                          <span className="w-1.5 h-3 bg-neutral-400 rounded-full border border-neutral-500 shadow-inner"></span>
+                        </div>
+                        <div className="text-[8px] font-mono uppercase tracking-widest text-gray-500 border-b border-dashed border-neutral-500/15 w-full pb-1 mt-1">
+                          HOUR
+                        </div>
+                        <div className="relative my-2 w-full h-12 flex items-center justify-center overflow-hidden bg-neutral-500/5 rounded border border-neutral-500/10">
+                          <div className="absolute left-0 right-0 top-1/2 h-px bg-neutral-500/20 z-10"></div>
+                          <span className="text-2xl sm:text-3xl font-mono font-black tracking-tight select-none">
+                            {localTime.getHours().toString().padStart(2, '0')}
+                          </span>
+                        </div>
+                        <div className="text-[8px] font-mono opacity-50 uppercase">
+                          {localTime.getHours() >= 12 ? 'PM' : 'AM'}
+                        </div>
+                      </div>
+
+                      {/* Minute Deck Card */}
+                      <div className={`relative border w-20 sm:w-24 p-2 flex flex-col items-center justify-between shadow-lg text-center rounded-lg ${
+                        darkMode ? 'border-neutral-800 bg-neutral-900/95 text-white' : 'border-neutral-300 bg-[#fdfaf2] text-neutral-800'
+                      }`}>
+                        <div className="absolute -top-2 left-0 right-0 flex justify-around px-2">
+                          <span className="w-1.5 h-3 bg-neutral-400 rounded-full border border-neutral-500 shadow-inner"></span>
+                          <span className="w-1.5 h-3 bg-neutral-400 rounded-full border border-neutral-500 shadow-inner"></span>
+                        </div>
+                        <div className="text-[8px] font-mono uppercase tracking-widest text-[#D95D39] border-b border-dashed border-neutral-500/15 w-full pb-1 mt-1">
+                          MINUTES
+                        </div>
+                        <div className="relative my-2 w-full h-12 flex items-center justify-center overflow-hidden bg-neutral-500/5 rounded border border-neutral-500/10">
+                          <div className="absolute left-0 right-0 top-1/2 h-px bg-neutral-500/20 z-10"></div>
+                          <span className="text-2xl sm:text-3xl font-mono font-black tracking-tight select-none">
+                            {localTime.getMinutes().toString().padStart(2, '0')}
+                          </span>
+                        </div>
+                        <div className="text-[8px] font-mono opacity-50 uppercase">
+                          SYNCED
+                        </div>
+                      </div>
+
+                      {/* Second Deck Card */}
+                      <div className={`relative border w-20 sm:w-24 p-2 flex flex-col items-center justify-between shadow-lg text-center rounded-lg ${
+                        darkMode ? 'border-neutral-800 bg-neutral-900/95 text-white' : 'border-neutral-300 bg-[#fdfaf2] text-neutral-800'
+                      }`}>
+                        <div className="absolute -top-2 left-0 right-0 flex justify-around px-2">
+                          <span className="w-1.5 h-3 bg-neutral-400 rounded-full border border-neutral-500 shadow-inner"></span>
+                          <span className="w-1.5 h-3 bg-neutral-400 rounded-full border border-neutral-500 shadow-inner"></span>
+                        </div>
+                        <div className="text-[8px] font-mono uppercase tracking-widest text-emerald-500 border-b border-dashed border-neutral-500/15 w-full pb-1 mt-1">
+                          SECONDS
+                        </div>
+                        <div className="relative my-2 w-full h-12 flex items-center justify-center overflow-hidden bg-neutral-500/5 rounded border border-neutral-500/10">
+                          <div className="absolute left-0 right-0 top-1/2 h-px bg-neutral-500/20 z-10"></div>
+                          <span 
+                            key={localTime.getSeconds()} 
+                            className="text-2xl sm:text-3xl font-mono font-black tracking-tight select-none animate-[flipPage_0.5s_ease-out]"
+                          >
+                            {localTime.getSeconds().toString().padStart(2, '0')}
+                          </span>
+                        </div>
+                        <div className="text-[8px] font-mono opacity-50 uppercase">
+                          LIVE
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="font-sans font-black text-xl text-[#D95D39] my-1 tabular-nums">
+                      {Math.floor(focusTimeLeft / 60).toString().padStart(2, '0')} : {(focusTimeLeft % 60).toString().padStart(2, '0')}
+                    </div>
+                    <span className="text-[10px] uppercase font-mono tracking-wider opacity-60 mb-4 block">
+                      {focusTimerMode === 'work' ? '🔥 Focus Block Session' : '☕ Break Session'}
+                    </span>
+
+                    {/* Integrated Focus Timer Interactive Controls */}
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => setIsFocusTimerActive(!isFocusTimerActive)}
+                        className={`px-4 py-2 border rounded-full text-xs font-mono uppercase tracking-wider font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                          isFocusTimerActive 
+                            ? 'border-neutral-500 bg-neutral-800 text-white hover:bg-neutral-700' 
+                            : 'border-[#D95D39] bg-[#D95D39] text-white hover:bg-[#c44e2e]'
+                        }`}
+                        title={isFocusTimerActive ? "Pause Focus" : "Start Focus"}
+                      >
+                        {isFocusTimerActive ? (
+                          <>
+                            <Pause size={12} fill="currentColor" />
+                            <span>Pause</span>
+                          </>
+                        ) : (
+                          <>
+                            <Play size={12} fill="currentColor" />
+                            <span>Start</span>
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setIsFocusTimerActive(false);
+                          const original = focusTimerMode === 'work' ? customWorkMin : customBreakMin;
+                          setFocusTimeLeft(original * 60);
+                          setFocusTimeTotal(original * 60);
+                          addLog('Focus timer reset from Immersive Deck.');
+                        }}
+                        className={`px-3.5 py-2 border rounded-full text-xs font-mono uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
+                          darkMode ? 'border-neutral-700 hover:border-neutral-500 hover:bg-neutral-800 text-neutral-300' : 'border-neutral-300 hover:border-neutral-400 hover:bg-neutral-100 text-neutral-700'
+                        }`}
+                        title="Reset Timer"
+                      >
+                        <RotateCcw size={12} />
+                        <span>Reset</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setIsFocusTimerActive(false);
+                          if (focusTimerMode === 'work') {
+                            setFocusTimerMode('break');
+                            setFocusTimeLeft(customBreakMin * 60);
+                            setFocusTimeTotal(customBreakMin * 60);
+                            addLog('Focus session skipped to Break from Immersive Deck.');
+                          } else {
+                            setFocusTimerMode('work');
+                            setFocusTimeLeft(customWorkMin * 60);
+                            setFocusTimeTotal(customWorkMin * 60);
+                            addLog('Break skipped to Focus from Immersive Deck.');
+                          }
+                        }}
+                        className={`px-3.5 py-2 border rounded-full text-xs font-mono uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
+                          darkMode ? 'border-neutral-700 hover:border-neutral-500 hover:bg-neutral-800 text-neutral-300' : 'border-neutral-300 hover:border-neutral-400 hover:bg-neutral-100 text-neutral-700'
+                        }`}
+                        title="Skip Session"
+                      >
+                        <SkipForward size={12} fill="currentColor" />
+                        <span>Skip</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* RIGHT COLUMN: Ambient Music Box */}
+              <div className="lg:col-span-3 flex flex-col justify-center">
+                <div className={`border p-4 rounded-lg shadow-sm border-dashed ${darkMode ? 'border-neutral-800 bg-[#161616]' : 'border-neutral-200 bg-white'} w-full`}>
+                  <span className="text-[10px] uppercase tracking-widest text-[#D95D39] block mb-2 font-mono font-bold flex items-center gap-1.5">
+                    <Music size={12} /> Ambient Audio Player
+                  </span>
+                  
+                  <div className="mb-3 font-mono text-[10px]">
+                    {uploadedTracks.length > 0 && musicType === 'local' ? (
+                      <p className="truncate font-bold text-neutral-800 dark:text-neutral-200">
+                        Playing: {uploadedTracks[currentTrackIndex]?.name}
+                      </p>
+                    ) : (
+                      <p className="truncate opacity-75">
+                        {musicType === 'synth' ? `Synth Loop: ${synthType}` : 'No Ambient Music Active'}
+                      </p>
+                    )}
+                  </div>
+
+                  {musicType === 'local' && uploadedTracks.length > 0 && (
+                    <div className="flex items-center gap-1.5 w-full text-[9px] font-mono text-neutral-400 mb-3">
+                      <span>{Math.floor(songCurrentTime / 60)}:{(Math.floor(songCurrentTime % 60)).toString().padStart(2, '0')}</span>
+                      <input
+                        type="range"
+                        min="0"
+                        max={songDuration || 100}
+                        value={songCurrentTime}
+                        onChange={handleSeekChange}
+                        className="flex-1 h-1 bg-neutral-500/20 rounded-lg appearance-none cursor-pointer accent-[#D95D39]"
+                      />
+                      <span>{Math.floor(songDuration / 60)}:{(Math.floor(songDuration % 60)).toString().padStart(2, '0')}</span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between gap-2 mt-1">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={handlePrevTrack}
+                        disabled={musicType !== 'local' || uploadedTracks.length <= 1}
+                        className={`p-1 border rounded-full disabled:opacity-30 cursor-pointer text-current ${
+                          darkMode ? 'border-neutral-800 hover:bg-neutral-800' : 'border-neutral-200 hover:bg-neutral-100'
+                        }`}
+                        title="Previous Track"
+                      >
+                        <SkipBack size={10} fill="currentColor" />
+                      </button>
+
+                      <button
+                        onClick={handleTogglePlayMusic}
+                        className={`p-1.5 border rounded-full text-white cursor-pointer ${
+                          isPlayingMusic ? 'bg-[#D95D39] border-[#D95D39]' : `border-neutral-300 hover:bg-neutral-500/10 text-current`
+                        }`}
+                      >
+                        {isPlayingMusic ? <Pause size={10} fill="currentColor" /> : <Play size={10} fill="currentColor" />}
+                      </button>
+
+                      <button
+                        onClick={handleNextTrack}
+                        disabled={musicType !== 'local' || uploadedTracks.length <= 1}
+                        className={`p-1 border rounded-full disabled:opacity-30 cursor-pointer text-current ${
+                          darkMode ? 'border-neutral-800 hover:bg-neutral-800' : 'border-neutral-200 hover:bg-neutral-100'
+                        }`}
+                        title="Next Track"
+                      >
+                        <SkipForward size={10} fill="currentColor" />
+                      </button>
+
+                      <button
+                        onClick={() => setIsLoopingMusic(!isLoopingMusic)}
+                        className={`p-1 border rounded-full cursor-pointer ${
+                          isLoopingMusic ? 'bg-[#D95D39]/20 border-[#D95D39] text-[#D95D39]' : `border-neutral-300 text-current`
+                        }`}
+                        title="Toggle Looping"
+                      >
+                        <Repeat size={10} />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 w-16">
+                      <button
+                        onClick={() => setMusicVolume(prev => prev === 0 ? 0.5 : 0)}
+                        className="opacity-70 hover:opacity-100 text-current"
+                      >
+                        {musicVolume === 0 ? <VolumeX size={10} /> : <Volume2 size={10} />}
+                      </button>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.05"
+                        value={musicVolume}
+                        onChange={(e) => setMusicVolume(parseFloat(e.target.value))}
+                        className="w-full h-1 bg-neutral-500/20 rounded-lg appearance-none cursor-pointer accent-[#D95D39]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* MINIMALIST INTERFACE: Center Clock Only */
+            <div className="flex-1 flex flex-col items-center justify-center py-6">
+              {focusClockStyle === 'digital' && (
+                <div className="flex flex-col items-center animate-fade-in w-full text-center">
+                  <div className="font-sans font-black text-8xl sm:text-[10rem] md:text-[12rem] tracking-tighter text-[#D95D39] tabular-nums leading-none">
+                    {Math.floor(focusTimeLeft / 60).toString().padStart(2, '0')}:
+                    {(focusTimeLeft % 60).toString().padStart(2, '0')}
+                  </div>
+                  <span className="text-xs uppercase tracking-widest opacity-60 mt-4 block">
+                    {focusTimerMode === 'work' ? '🔥 Focus Active' : '☕ Break'}
+                  </span>
+                </div>
+              )}
+
+              {focusClockStyle === 'analog' && (
+                <div className="flex flex-col items-center animate-fade-in w-full text-center">
+                  <div className="relative w-56 h-56 sm:w-64 sm:h-64 mb-4">
+                    <svg className="w-full h-full" viewBox="0 0 240 240">
+                      <circle cx="120" cy="120" r="110" className={darkMode ? 'fill-neutral-900 stroke-neutral-800' : 'fill-white stroke-neutral-900'} strokeWidth="4" />
+                      
+                      <circle
+                        cx="120"
+                        cy="120"
+                        r="105"
+                        fill="none"
+                        stroke="#D95D39"
+                        strokeWidth="4"
+                        strokeDasharray={`${2 * Math.PI * 105}`}
+                        strokeDashoffset={`${2 * Math.PI * 105 * (1 - focusTimeLeft / focusTimeTotal)}`}
+                        transform="rotate(-90, 120, 120)"
+                        className="transition-all duration-1000 opacity-80"
+                      />
+
+                      <circle cx="120" cy="120" r="4.5" className="fill-[#D95D39]" />
+
+                      {Array.from({ length: 12 }).map((_, i) => {
+                        const angle = (i * 30 * Math.PI) / 180;
+                        const x1 = 120 + 95 * Math.sin(angle);
+                        const y1 = 120 - 95 * Math.cos(angle);
+                        const x2 = 120 + 105 * Math.sin(angle);
+                        const y2 = 120 - 105 * Math.cos(angle);
+                        return (
+                          <line
+                            key={i}
+                            x1={x1}
+                            y1={y1}
+                            x2={x2}
+                            y2={y2}
+                            className={darkMode ? 'stroke-neutral-700' : 'stroke-neutral-400'}
+                            strokeWidth={i % 3 === 0 ? "3" : "1.5"}
+                          />
+                        );
+                      })}
+
+                      {(() => {
+                        const h = localTime.getHours();
+                        const m = localTime.getMinutes();
+                        const angle = ((h % 12) * 30) + (m * 0.5);
+                        return (
+                          <line
+                            x1="120"
+                            y1="120"
+                            x2={120 + 55 * Math.sin((angle * Math.PI) / 180)}
+                            y2={120 - 55 * Math.cos((angle * Math.PI) / 180)}
+                            className={darkMode ? 'stroke-white' : 'stroke-[#1a1a1a]'}
+                            strokeWidth="4.5"
+                            strokeLinecap="round"
+                          />
+                        );
+                      })()}
+
+                      {(() => {
+                        const m = localTime.getMinutes();
+                        const s = localTime.getSeconds();
+                        const angle = (m * 6) + (s * 0.1);
+                        return (
+                          <line
+                            x1="120"
+                            y1="120"
+                            x2={120 + 80 * Math.sin((angle * Math.PI) / 180)}
+                            y2={120 - 80 * Math.cos((angle * Math.PI) / 180)}
+                            className={darkMode ? 'stroke-neutral-300' : 'stroke-neutral-700'}
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                          />
+                        );
+                      })()}
+
+                      {(() => {
+                        const s = localTime.getSeconds();
+                        const angle = s * 6;
+                        return (
+                          <line
+                            x1="120"
+                            y1="120"
+                            x2={120 + 88 * Math.sin((angle * Math.PI) / 180)}
+                            y2={120 - 88 * Math.cos((angle * Math.PI) / 180)}
+                            stroke="#D95D39"
+                            strokeWidth="1"
+                            strokeLinecap="round"
+                          />
+                        );
+                      })()}
+                    </svg>
+                  </div>
+                  <div className="font-mono font-bold text-sm opacity-75">
+                    TIMER: {Math.floor(focusTimeLeft / 60).toString().padStart(2, '0')}:{(focusTimeLeft % 60).toString().padStart(2, '0')}
+                  </div>
+                </div>
+              )}
+
+              {focusClockStyle === 'calendar' && (
+                <div className="flex flex-col items-center animate-fade-in w-full text-center">
+                  <div className="flex flex-row items-center justify-center gap-3 w-full max-w-lg mb-4">
+                    {/* Hour Deck Card */}
+                    <div className={`relative border w-20 p-2 flex flex-col items-center justify-between shadow-lg text-center rounded-lg ${
+                      darkMode ? 'border-neutral-800 bg-neutral-900/95 text-white' : 'border-neutral-300 bg-[#fdfaf2] text-neutral-800'
+                    }`}>
+                      <span className="text-[8px] font-mono uppercase opacity-50">HR</span>
+                      <span className="text-xl sm:text-2xl font-mono font-black select-none mt-1">
+                        {localTime.getHours().toString().padStart(2, '0')}
+                      </span>
+                    </div>
+                    {/* Minute Deck Card */}
+                    <div className={`relative border w-20 p-2 flex flex-col items-center justify-between shadow-lg text-center rounded-lg ${
+                      darkMode ? 'border-neutral-800 bg-neutral-900/95 text-white' : 'border-neutral-300 bg-[#fdfaf2] text-neutral-800'
+                    }`}>
+                      <span className="text-[8px] font-mono uppercase opacity-50">MIN</span>
+                      <span className="text-xl sm:text-2xl font-mono font-black select-none mt-1">
+                        {localTime.getMinutes().toString().padStart(2, '0')}
+                      </span>
+                    </div>
+                    {/* Second Deck Card */}
+                    <div className={`relative border w-20 p-2 flex flex-col items-center justify-between shadow-lg text-center rounded-lg ${
+                      darkMode ? 'border-neutral-800 bg-neutral-900/95 text-white' : 'border-neutral-300 bg-[#fdfaf2] text-neutral-800'
+                    }`}>
+                      <span className="text-[8px] font-mono uppercase opacity-50">SEC</span>
+                      <span key={localTime.getSeconds()} className="text-xl sm:text-2xl font-mono font-black select-none mt-1 animate-[flipPage_0.5s_ease-out]">
+                        {localTime.getSeconds().toString().padStart(2, '0')}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="font-mono font-bold text-sm opacity-75">
+                    TIMER: {Math.floor(focusTimeLeft / 60).toString().padStart(2, '0')}:{(focusTimeLeft % 60).toString().padStart(2, '0')}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Bottom attribution/status */}
+          <div className="text-center text-[9px] opacity-40 font-mono py-1">
+            ClockWork Immersive Workspace Deck • Focus Chamber
+          </div>
+
+        </div>
+      )}
+
       {/* HEADER SECTION - CLASSIC EDITORIAL DESIGN */}
       <header className={`border-b px-6 py-4 md:px-12 md:py-5 flex flex-col md:flex-row justify-between items-baseline gap-4 transition-colors ${
         activeTheme.borderClass
@@ -1851,30 +2953,82 @@ export default function App() {
             <LogOut size={14} />
           </button>
 
-          {/* QUICK THEME SWITCHER TOGGLE */}
+          {/* COMPACT PERMANENT TOP HEADER MUSIC PLAYER */}
+          <div className={`flex items-center gap-2 px-2.5 py-1 border text-[10px] font-mono uppercase font-bold shrink-0 transition-all rounded-full ${
+            isPlayingMusic 
+              ? 'border-red-500 bg-red-500/10 text-red-500' 
+              : 'border-neutral-500/20 bg-neutral-500/5 text-neutral-500'
+          }`}>
+            <button
+              onClick={handlePrevTrack}
+              disabled={musicType !== 'local' || uploadedTracks.length <= 1}
+              className="p-0.5 hover:scale-115 transition-transform disabled:opacity-30 cursor-pointer"
+              title="Previous Track"
+            >
+              <SkipBack size={10} fill="currentColor" />
+            </button>
+            <button
+              onClick={handleTogglePlayMusic}
+              className="p-0.5 hover:scale-115 transition-transform flex items-center gap-1 cursor-pointer"
+              title={isPlayingMusic ? "Pause" : "Play"}
+            >
+              {isPlayingMusic ? (
+                <Pause size={10} fill="currentColor" />
+              ) : (
+                <Play size={10} fill="currentColor" />
+              )}
+            </button>
+            <button
+              onClick={handleNextTrack}
+              disabled={musicType !== 'local' || uploadedTracks.length <= 1}
+              className="p-0.5 hover:scale-115 transition-transform disabled:opacity-30 cursor-pointer"
+              title="Next Track"
+            >
+              <SkipForward size={10} fill="currentColor" />
+            </button>
+            <span className="max-w-[60px] sm:max-w-[100px] truncate ml-1 opacity-75" title={
+              musicType === 'local' 
+                ? (uploadedTracks[currentTrackIndex]?.name || 'Local Track') 
+                : musicType === 'synth' 
+                ? `${synthType} ambient` 
+                : 'Silent'
+            }>
+              {musicType === 'local' 
+                ? (uploadedTracks[currentTrackIndex]?.name || 'Local') 
+                : musicType === 'synth' 
+                ? `🌧️ ${synthType}` 
+                : 'Silent'}
+            </span>
+          </div>
+
+          {/* QUICK THEME SWITCHER TOGGLE - CYCLE ALL */}
           <button
             onClick={() => {
-              // Toggle between cream (standard light) and charcoal (standard dark)
-              setThemeId(prev => (prev === 'cream' ? 'charcoal' : 'cream'));
+              const currentIndex = themesList.findIndex(t => t.id === themeId);
+              const nextIndex = (currentIndex + 1) % themesList.length;
+              setThemeId(themesList[nextIndex].id);
+              addLog(`Workspace theme cycled to: ${themesList[nextIndex].name}`);
             }}
             className={`p-2 border rounded-full transition-all ${
               darkMode ? 'border-[#FDFCFB]/20 text-yellow-400 hover:bg-neutral-800' : 'border-[#1A1A1A] text-slate-800 hover:bg-[#F2F0ED]'
             }`}
-            title={darkMode ? "Switch to Light Cream Edition" : "Switch to Charcoal Dark Mode"}
+            title="Cycle Through All Bespoke Themes"
           >
-            {darkMode ? <Sun size={14} /> : <Moon size={14} />}
+            <Palette size={14} />
           </button>
         </div>
       </header>
 
       {/* SEGMENTED TAB SWITCHER FOR UI SIMPLICITY */}
-      <nav className={`px-6 md:px-12 py-2.5 border-b flex gap-1 justify-start transition-all ${
-        darkMode ? 'border-[#FDFCFB]/10 bg-neutral-900/40' : 'border-[#1A1A1A] bg-[#FDFCFB]'
-      }`}>
+      <nav className={`px-6 md:px-12 py-2.5 border-b flex flex-wrap gap-1 justify-start transition-all ${
+        activeTheme.borderClass
+      } ${activeTheme.cardBg}`}>
         {[
           { id: 'home', label: 'Active Workspace', icon: CheckSquare },
           { id: 'analytics', label: 'Productivity Analytics', icon: TrendingUp },
+          { id: 'focus', label: 'Deep Focus & Music', icon: Clock },
           { id: 'timetable', label: 'Timetable & Importer', icon: CalendarIcon },
+          { id: 'friends', label: 'Social Compete', icon: Users },
           { id: 'settings', label: 'Settings', icon: Settings }
         ].map((tab) => {
           const TabIcon = tab.icon;
@@ -1882,7 +3036,7 @@ export default function App() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-wider transition-all select-none rounded-none border-b-2 ${
+              className={`flex items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-wider transition-all select-none border-b-2 ${
                 activeTab === tab.id
                   ? 'border-[#D95D39] text-[#D95D39] font-bold'
                   : 'border-transparent opacity-60 hover:opacity-100 hover:text-[#D95D39]'
@@ -1895,18 +3049,16 @@ export default function App() {
         })}
       </nav>
 
-      {/* CORE GRID LAYOUT: Three Columns (Directives, Action Core, "Mind" AI Chat & Momentum) */}
+      {/* CORE GRID LAYOUT: Integrated Bento Layout */}
       <main className={`flex-1 grid grid-cols-1 ${
-        activeTab === 'home' ? 'lg:grid-cols-[320px_1fr_330px]' : 'lg:grid-cols-1 max-w-7xl mx-auto w-full'
+        activeTab === 'home' ? 'lg:grid-cols-3' : 'lg:grid-cols-1 max-w-7xl mx-auto w-full'
       } gap-px transition-colors ${
         darkMode ? 'bg-neutral-800' : 'bg-[#1A1A1A]'
       } ${activeTheme.bg}`}>
         
-        {/* COLUMN 1: DIRECTIVES & AUDIO COMPANION (LEFT) */}
+        {/* COLUMN 1: DIRECTIVES & AUDIO COMPANION (LEFT BENTO BOX) */}
         {activeTab === 'home' && (
-          <section id="sidebar-left" className={`p-6 flex flex-col gap-6 justify-between transition-colors ${
-            darkMode ? 'bg-[#151515]' : 'bg-[#FDFCFB]'
-          }`}>
+          <section id="sidebar-left" className={`p-6 flex flex-col gap-6 justify-between transition-colors lg:col-span-1 lg:order-2 ${activeTheme.cardBg}`}>
           <div>
             <div className={`flex justify-between items-center mb-5 pb-2 border-b ${
               darkMode ? 'border-neutral-800' : 'border-[#E5E5E5]'
@@ -2055,9 +3207,9 @@ export default function App() {
         )}
 
         {/* COLUMN 2: TABBED ACTION WORKSPACE (CENTER) */}
-        <section id="center-core" className={`p-6 md:p-8 flex flex-col gap-6 order-1 lg:order-2 transition-colors ${
-          darkMode ? 'bg-neutral-950' : 'bg-[#FDFCFB]'
-        }`}>
+        <section id="center-core" className={`p-6 md:p-8 flex flex-col gap-6 order-1 ${
+          activeTab === 'home' ? 'lg:col-span-3 lg:order-1' : 'lg:col-span-1'
+        } transition-colors ${activeTheme.cardBg}`}>
           
           {/* TAB 1: ACTIVE WORKSPACE HOME PAGE */}
           {activeTab === 'home' && (
@@ -2101,151 +3253,6 @@ export default function App() {
                   ))}
                 </div>
               )}
-
-              {/* EDITORIAL POMODORO FOCUS TIMER */}
-              <div className={`border p-5 relative overflow-hidden transition-all ${
-                darkMode ? 'border-neutral-800 bg-[#161616]' : 'border-[#1A1A1A] bg-[#FAF9F6]'
-              }`}>
-                <div className="absolute top-0 right-0 p-3 text-[10px] uppercase font-mono tracking-widest font-bold bg-[#D95D39]/10 text-[#D95D39]">
-                  {focusTimerMode === 'work' ? '⚡ Focus State' : '☕ Recharge State'}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-                  {/* Left block: Title & Configuration input */}
-                  <div className="md:col-span-4 space-y-3">
-                    <div className="flex items-center gap-1 text-[#D95D39]">
-                      <Clock size={16} />
-                      <span className="text-xs uppercase font-mono tracking-wider font-bold">Workspace Focus Timer</span>
-                    </div>
-                    <p className="text-xs text-gray-500 italic">
-                      Configure focus intervals to guard momentum and avoid procrastination.
-                    </p>
-
-                    <div className="grid grid-cols-2 gap-2 pt-1 font-mono text-[10px]">
-                      <div>
-                        <label className="block text-[9px] uppercase opacity-65 mb-1">Work (Min)</label>
-                        <input
-                          type="number"
-                          min="1"
-                          max="120"
-                          value={customWorkMin}
-                          onChange={(e) => {
-                            const v = Math.max(1, parseInt(e.target.value, 10) || 25);
-                            setCustomWorkMin(v);
-                            if (focusTimerMode === 'work') {
-                              setFocusTimeLeft(v * 60);
-                              setFocusTimeTotal(v * 60);
-                            }
-                          }}
-                          className={`w-full px-2 py-1 border text-xs focus:outline-none ${
-                            darkMode ? 'bg-neutral-800 border-neutral-700 text-white' : 'bg-white border-[#1A1A1A] text-black'
-                          }`}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[9px] uppercase opacity-65 mb-1">Break (Min)</label>
-                        <input
-                          type="number"
-                          min="1"
-                          max="60"
-                          value={customBreakMin}
-                          onChange={(e) => {
-                            const v = Math.max(1, parseInt(e.target.value, 10) || 5);
-                            setCustomBreakMin(v);
-                            if (focusTimerMode === 'break') {
-                              setFocusTimeLeft(v * 60);
-                              setFocusTimeTotal(v * 60);
-                            }
-                          }}
-                          className={`w-full px-2 py-1 border text-xs focus:outline-none ${
-                            darkMode ? 'bg-neutral-800 border-neutral-700 text-white' : 'bg-white border-[#1A1A1A] text-black'
-                          }`}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Middle block: Live Countdown visual */}
-                  <div className="md:col-span-5 flex flex-col items-center justify-center py-2 border-y md:border-y-0 md:border-x border-dashed border-neutral-500/20">
-                    <span className="text-[10px] uppercase tracking-widest opacity-60 font-mono mb-1">
-                      {focusTimerMode === 'work' ? 'Time to Commit' : 'Break In Progress'}
-                    </span>
-                    
-                    <div className="font-sans font-black text-5xl md:text-6xl tracking-tighter text-[#D95D39] tabular-nums">
-                      {Math.floor(focusTimeLeft / 60).toString().padStart(2, '0')}:
-                      {(focusTimeLeft % 60).toString().padStart(2, '0')}
-                    </div>
-
-                    {/* Visual progress bar */}
-                    <div className="w-full max-w-[200px] bg-neutral-500/20 h-1.5 mt-3 relative overflow-hidden rounded-full">
-                      <div
-                        className="bg-[#D95D39] h-full transition-all duration-1000"
-                        style={{ width: `${(focusTimeLeft / focusTimeTotal) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Right block: Action Controls */}
-                  <div className="md:col-span-3 flex flex-col gap-2">
-                    <button
-                      onClick={() => setIsFocusTimerActive(!isFocusTimerActive)}
-                      className={`w-full py-2.5 font-mono text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors ${
-                        isFocusTimerActive
-                          ? 'bg-neutral-700 hover:bg-neutral-800 text-white'
-                          : 'bg-[#D95D39] hover:bg-[#c44e2e] text-white'
-                      }`}
-                    >
-                      {isFocusTimerActive ? (
-                        <>
-                          <Pause size={12} /> Pause Timer
-                        </>
-                      ) : (
-                        <>
-                          <Play size={12} fill="currentColor" /> Begin Focus
-                        </>
-                      )}
-                    </button>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => {
-                          setIsFocusTimerActive(false);
-                          const original = focusTimerMode === 'work' ? customWorkMin : customBreakMin;
-                          setFocusTimeLeft(original * 60);
-                          setFocusTimeTotal(original * 60);
-                          addLog('Focus timer reset.');
-                        }}
-                        className={`py-1.5 border text-[9px] uppercase font-mono font-bold tracking-wider flex items-center justify-center gap-1 transition-colors ${
-                          darkMode ? 'border-neutral-800 bg-[#1e1e1e] hover:bg-neutral-800' : 'border-[#1A1A1A] bg-white hover:bg-gray-100'
-                        }`}
-                      >
-                        <RotateCcw size={10} /> Reset
-                      </button>
-                      <button
-                        onClick={() => {
-                          setIsFocusTimerActive(false);
-                          if (focusTimerMode === 'work') {
-                            setFocusTimerMode('break');
-                            setFocusTimeLeft(customBreakMin * 60);
-                            setFocusTimeTotal(customBreakMin * 60);
-                            addLog('Focus session skipped to Break.');
-                          } else {
-                            setFocusTimerMode('work');
-                            setFocusTimeLeft(customWorkMin * 60);
-                            setFocusTimeTotal(customWorkMin * 60);
-                            addLog('Break skipped to Focus.');
-                          }
-                        }}
-                        className={`py-1.5 border text-[9px] uppercase font-mono font-bold tracking-wider flex items-center justify-center transition-colors ${
-                          darkMode ? 'border-neutral-800 bg-[#1e1e1e] hover:bg-neutral-800' : 'border-[#1A1A1A] bg-white hover:bg-gray-100'
-                        }`}
-                      >
-                        Skip State
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
 
               {/* HEADER CONTROLS */}
               <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b ${
@@ -2369,46 +3376,44 @@ export default function App() {
                   </div>
                 ) : (
                   <div className={`divide-y border-t border-b ${
-                    darkMode ? 'divide-neutral-800 border-neutral-800' : 'divide-[#E5E5E5] border-[#1A1A1A]'
+                    activeTheme.borderClass
                   }`}>
                     {tasks.map((task) => (
                       <div
                         key={task.id}
-                        className={`py-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-all duration-200 ${
+                        className={`py-2 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 transition-all duration-200 ${
                           task.completed ? 'opacity-35 font-normal' : ''
                         }`}
                       >
-                        <div className="flex items-start gap-4 flex-1">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
                           {/* Priority Rank Indicator */}
-                          <span className={`font-serif italic text-3xl md:text-4xl leading-none min-w-[40px] ${
-                            darkMode ? 'text-neutral-700' : 'text-[#1A1A1A]/35'
-                          }`}>
-                            {task.priorityNum || '—'}
+                          <span className="font-mono text-xs tracking-wider text-[#D95D39] font-bold min-w-[28px] shrink-0 text-center">
+                            #{task.priorityNum || '—'}
                           </span>
 
                           {/* Checkbox */}
                           <button
                             onClick={() => toggleTaskCompleted(task.id)}
-                            className={`mt-1 transition-colors ${
+                            className={`transition-colors shrink-0 ${
                               darkMode ? 'text-[#FDFCFB] hover:text-[#D95D39]' : 'text-[#1A1A1A] hover:text-[#D95D39]'
                             }`}
                           >
                             {task.completed ? (
-                              <CheckCircle2 size={19} className="text-green-500" />
+                              <CheckCircle2 size={16} className="text-green-500" />
                             ) : (
-                              <Circle size={19} />
+                              <Circle size={16} />
                             )}
                           </button>
 
-                          <div className="space-y-1">
-                            <div className="flex flex-wrap items-baseline gap-2">
-                              <span className={`text-base font-bold ${task.completed ? 'line-through' : ''}`}>
+                          <div className="space-y-0.5 min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className={`text-xs font-bold truncate ${task.completed ? 'line-through' : ''}`}>
                                 {task.title}
                               </span>
-                              <span className="text-[9px] font-mono px-2 py-0.5 uppercase bg-[#D95D39] text-white">
+                              <span className="text-[8px] font-mono px-1.5 py-0.2 uppercase bg-[#D95D39] text-white">
                                 Due {task.deadline}
                               </span>
-                              <span className={`text-[9px] font-mono px-2 py-0.5 uppercase border ${
+                              <span className={`text-[8px] font-mono px-1.5 py-0.2 uppercase border ${
                                 task.priority === 'high' 
                                   ? 'border-red-500 text-red-500 bg-red-500/10' 
                                   : task.priority === 'medium'
@@ -2420,17 +3425,17 @@ export default function App() {
                             </div>
                             
                             {/* AI Comment */}
-                            <p className={`text-xs font-mono leading-relaxed italic flex items-center gap-1.5 ${
+                            <p className={`text-[10px] font-mono truncate leading-normal italic flex items-center gap-1 ${
                               darkMode ? 'text-gray-400' : 'text-gray-600'
                             }`}>
-                              <Sparkles size={11} className="text-amber-500 shrink-0" />
-                              <span>{task.aiComment}</span>
+                              <Sparkles size={9} className="text-amber-500 shrink-0" />
+                              <span className="truncate">{task.aiComment}</span>
                             </p>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-                          <span className={`text-xs font-mono border px-2.5 py-1 ${
+                        <div className="flex items-center gap-3 w-full md:w-auto justify-end shrink-0">
+                          <span className={`text-[10px] font-mono border px-2 py-0.5 ${
                             darkMode ? 'border-neutral-800 bg-neutral-900 text-gray-400' : 'border-gray-200 bg-[#F9F8F6] text-gray-500'
                           }`}>
                             {task.estimatedTime || '30m'}
@@ -2440,7 +3445,7 @@ export default function App() {
                             className="text-neutral-400 hover:text-red-500 p-1 transition-colors"
                             title="Delete Task"
                           >
-                            <Trash2 size={14} />
+                            <Trash2 size={12} />
                           </button>
                         </div>
                       </div>
@@ -2450,25 +3455,25 @@ export default function App() {
               </div>
 
               {/* DAY FLOW PLANNER SCHEDULE */}
-              <div className={`border p-5 ${
-                darkMode ? 'border-neutral-800 bg-[#161616]' : 'border-[#1A1A1A] bg-[#F9F8F6]'
-              }`}>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 pb-2 border-b border-dashed border-neutral-500/30 gap-2">
-                  <h3 className="text-xs uppercase font-mono font-bold tracking-widest flex items-center gap-2">
-                    <CalendarIcon size={14} className="text-[#D95D39]" />
-                    Optimized Day-Flow Planner
+              <div className={`border p-3 ${
+                activeTheme.borderClass
+              } ${activeTheme.cardBg}`}>
+                <div className="flex items-center justify-between mb-2 pb-1 border-b border-dashed border-neutral-500/25">
+                  <h3 className="text-[10px] uppercase font-mono font-bold tracking-wider flex items-center gap-1.5 text-[#D95D39]">
+                    <CalendarIcon size={11} />
+                    Day-Flow Planner
                   </h3>
-                  <span className="text-[9px] uppercase font-mono opacity-60">
-                    Hourly Time Blocking
+                  <span className="text-[8px] uppercase font-mono opacity-50">
+                    Time Blocks
                   </span>
                 </div>
 
                 {schedule.length === 0 ? (
-                  <div className="text-center py-6 text-xs font-mono text-gray-500 italic">
+                  <div className="text-center py-4 text-xs font-mono text-gray-500 italic">
                     Schedule empty. Select "Auto-Schedule" above to organize commitments.
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
                     {schedule.map((slot, index) => (
                       <div
                         key={index}
@@ -2478,7 +3483,7 @@ export default function App() {
                           setSchedule(updated);
                           addLog(`Toggled block schedule slot: "${slot.taskTitle}"`);
                         }}
-                        className={`border p-3 flex justify-between items-center cursor-pointer transition-all hover:scale-[1.01] select-none ${
+                        className={`border p-2 flex justify-between items-center cursor-pointer transition-all hover:scale-[1.01] select-none ${
                           slot.completed 
                             ? 'opacity-40 line-through' 
                             : ''
@@ -2488,17 +3493,17 @@ export default function App() {
                             : 'bg-[#FDFCFB] border-[#1A1A1A] hover:bg-white'
                         }`}
                       >
-                        <div className="space-y-1">
-                          <span className="text-[10px] font-mono tracking-wider uppercase text-gray-500 font-bold flex items-center gap-1">
-                            <CornerDownRight size={10} />
+                        <div className="space-y-0.5 min-w-0 flex-1 mr-2">
+                          <span className="text-[8px] font-mono tracking-wider uppercase text-gray-500 font-bold flex items-center gap-1">
+                            <CornerDownRight size={9} />
                             {slot.time}
                           </span>
-                          <div className="text-xs font-bold leading-tight font-serif">
+                          <div className="text-xs font-bold leading-tight font-serif truncate">
                             {slot.taskTitle}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`text-[8px] uppercase font-mono px-2 py-0.5 rounded font-bold ${
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className={`text-[7px] uppercase font-mono px-1.5 py-0.2 rounded font-bold ${
                             slot.type === 'focus' 
                               ? 'bg-blue-100 text-blue-900 border border-blue-200' 
                               : slot.type === 'admin'
@@ -2507,7 +3512,7 @@ export default function App() {
                           }`}>
                             {slot.type}
                           </span>
-                          <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
+                          <div className={`w-3 h-3 rounded-full border flex items-center justify-center ${
                             darkMode ? 'border-neutral-600' : 'border-[#1A1A1A]'
                           } ${slot.completed ? 'bg-[#D95D39]' : 'bg-transparent'}`}>
                             {slot.completed && <Check size={8} className="text-white" />}
@@ -2811,6 +3816,747 @@ export default function App() {
             </div>
           )}
 
+          {/* TAB 2.5: DEEP FOCUS & SOUNDSCAPES PAGE (NEW) */}
+          {activeTab === 'focus' && (
+            <div className="space-y-6 animate-fade-in">
+              <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b ${
+                darkMode ? 'border-neutral-800' : 'border-[#1A1A1A]'
+              }`}>
+                <div>
+                  <h2 className="text-xs uppercase tracking-widest font-bold opacity-60 mb-1 font-mono text-[#D95D39]">
+                    Deep Focus & Soundscapes
+                  </h2>
+                  <p className={`text-xs font-serif italic ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    An immersive, full-width focus chamber designed to mute distractions and sustain deep work flow.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase font-mono text-gray-500 mr-1">Clock Style:</span>
+                  {(['digital', 'analog', 'calendar'] as const).map((style) => (
+                    <button
+                      key={style}
+                      onClick={() => {
+                        setFocusClockStyle(style);
+                        addLog(`Focus Clock style updated to ${style}`);
+                      }}
+                      className={`px-3 py-1.5 border text-xs font-mono uppercase tracking-wider transition-colors ${
+                        focusClockStyle === style
+                          ? 'bg-[#D95D39] text-white border-[#D95D39]'
+                          : darkMode
+                          ? 'border-neutral-800 bg-[#1E1E1E] text-gray-300 hover:bg-neutral-800'
+                          : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      {style}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* IMMERSIVE FOCUS DECK CARD (FULL-SIZE HORIZONTAL) */}
+              <div className={`border p-6 md:p-8 relative overflow-hidden transition-all ${
+                activeTheme.borderClass
+              } ${activeTheme.cardBg}`}>
+                <div className="absolute top-0 right-0 p-3 text-[10px] uppercase font-mono tracking-widest font-bold bg-[#D95D39]/10 text-[#D95D39]">
+                  {focusTimerMode === 'work' ? '⚡ Focus State' : '☕ Recharge State'}
+                </div>
+
+                {/* Content Layout */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                  {/* Left Block: Config & Progress */}
+                  <div className="lg:col-span-4 space-y-4">
+                    <div className="flex items-center gap-1.5 text-[#D95D39]">
+                      <Clock size={16} />
+                      <span className="text-xs uppercase font-mono tracking-wider font-bold">Workspace Focus Deck</span>
+                    </div>
+                    <p className="text-xs text-gray-500 leading-relaxed font-mono">
+                      Box Breathing and sonic fields combined. Tune your mind, set durations, and synchronize goals.
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-3 pt-2 font-mono text-[10px]">
+                      <div>
+                        <label className="block text-[9px] uppercase opacity-65 mb-1 font-bold">Work Duration (Min)</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="120"
+                          value={customWorkMin}
+                          onChange={(e) => {
+                            const v = Math.max(1, parseInt(e.target.value, 10) || 25);
+                            setCustomWorkMin(v);
+                            if (focusTimerMode === 'work') {
+                              setFocusTimeLeft(v * 60);
+                              setFocusTimeTotal(v * 60);
+                            }
+                          }}
+                          className={`w-full px-2.5 py-1.5 border text-xs focus:outline-none ${
+                            darkMode ? 'bg-neutral-800 border-neutral-700 text-white' : 'bg-white border-[#1A1A1A] text-black'
+                          }`}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] uppercase opacity-65 mb-1 font-bold">Break Duration (Min)</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="60"
+                          value={customBreakMin}
+                          onChange={(e) => {
+                            const v = Math.max(1, parseInt(e.target.value, 10) || 5);
+                            setCustomBreakMin(v);
+                            if (focusTimerMode === 'break') {
+                              setFocusTimeLeft(v * 60);
+                              setFocusTimeTotal(v * 60);
+                            }
+                          }}
+                          className={`w-full px-2.5 py-1.5 border text-xs focus:outline-none ${
+                            darkMode ? 'bg-neutral-800 border-neutral-700 text-white' : 'bg-white border-[#1A1A1A] text-black'
+                          }`}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Quick presets buttons */}
+                    <div className="flex gap-1.5 pt-1">
+                      {[
+                        { label: 'Pomodoro', w: 25, b: 5 },
+                        { label: 'Ultra', w: 50, b: 10 },
+                        { label: 'Short Focus', w: 15, b: 3 }
+                      ].map((preset) => (
+                        <button
+                          key={preset.label}
+                          onClick={() => {
+                            setCustomWorkMin(preset.w);
+                            setCustomBreakMin(preset.b);
+                            setFocusTimerMode('work');
+                            setFocusTimeLeft(preset.w * 60);
+                            setFocusTimeTotal(preset.w * 60);
+                            addLog(`Applied focus preset: ${preset.label} (${preset.w}m / ${preset.b}m)`);
+                          }}
+                          className={`text-[9px] font-mono px-2 py-1 border transition-colors ${
+                            darkMode ? 'border-neutral-800 hover:bg-neutral-800 text-gray-300' : 'border-gray-200 hover:bg-gray-100 text-gray-700'
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Middle Block: Beautiful Selected Clock Interface */}
+                  <div className="lg:col-span-5 flex flex-col items-center justify-center py-6 border-y lg:border-y-0 lg:border-x border-dashed border-neutral-500/20 min-h-[320px]">
+                    {focusClockStyle === 'digital' && (
+                      <div className="flex flex-col items-center animate-fade-in">
+                        <span className="text-[10px] uppercase tracking-widest opacity-60 font-mono mb-2">
+                          {focusTimerMode === 'work' ? '⚡ Time to Commit' : '☕ Break In Progress'}
+                        </span>
+                        
+                        <div className="font-sans font-black text-6xl md:text-7xl tracking-tighter text-[#D95D39] tabular-nums leading-none">
+                          {Math.floor(focusTimeLeft / 60).toString().padStart(2, '0')}:
+                          {(focusTimeLeft % 60).toString().padStart(2, '0')}
+                        </div>
+
+                        {/* Visual progress bar */}
+                        <div className="w-full min-w-[240px] bg-neutral-500/15 h-2.5 mt-6 relative overflow-hidden rounded-full border border-neutral-500/10">
+                          <div
+                            className="bg-[#D95D39] h-full transition-all duration-1000"
+                            style={{ width: `${(focusTimeLeft / focusTimeTotal) * 100}%` }}
+                          />
+                        </div>
+
+                        {/* Live box breathing guide */}
+                        <div className="mt-6 flex items-center gap-3 bg-[#D95D39]/10 border border-[#D95D39]/20 px-4 py-2 rounded-none animate-pulse">
+                          <span className="w-2.5 h-2.5 bg-[#D95D39] rounded-full"></span>
+                          <span className="text-[10px] font-mono uppercase font-bold tracking-wider text-[#D95D39]">
+                            Box Breath: {breathingPhase} ({ (breathingTick % 4) + 1 }s)
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {focusClockStyle === 'analog' && (
+                      <div className="flex flex-col items-center animate-fade-in w-full">
+                        <span className="text-[10px] uppercase tracking-widest opacity-50 font-mono mb-3">
+                          Synchronized Chronometer
+                        </span>
+
+                        {/* Custom SVG Analog Clock */}
+                        <div className="relative w-56 h-56">
+                          <svg className="w-full h-full" viewBox="0 0 240 240">
+                            {/* Clock Face Background */}
+                            <circle cx="120" cy="120" r="110" className={darkMode ? 'fill-neutral-900 stroke-neutral-800' : 'fill-white stroke-neutral-900'} strokeWidth="4" />
+                            
+                            {/* Progress Arc around the rim */}
+                            <circle
+                              cx="120"
+                              cy="120"
+                              r="105"
+                              fill="none"
+                              stroke="#D95D39"
+                              strokeWidth="4"
+                              strokeDasharray={`${2 * Math.PI * 105}`}
+                              strokeDashoffset={`${2 * Math.PI * 105 * (1 - focusTimeLeft / focusTimeTotal)}`}
+                              transform="rotate(-90, 120, 120)"
+                              className="transition-all duration-1000 opacity-80"
+                            />
+
+                            {/* Clock center pin */}
+                            <circle cx="120" cy="120" r="4.5" className="fill-[#D95D39]" />
+
+                            {/* Hour Ticks */}
+                            {Array.from({ length: 12 }).map((_, i) => {
+                              const angle = (i * 30 * Math.PI) / 180;
+                              const x1 = 120 + 95 * Math.sin(angle);
+                              const y1 = 120 - 95 * Math.cos(angle);
+                              const x2 = 120 + 105 * Math.sin(angle);
+                              const y2 = 120 - 105 * Math.cos(angle);
+                              return (
+                                <line
+                                  key={i}
+                                  x1={x1}
+                                  y1={y1}
+                                  x2={x2}
+                                  y2={y2}
+                                  className={darkMode ? 'stroke-neutral-700' : 'stroke-neutral-400'}
+                                  strokeWidth={i % 3 === 0 ? "3" : "1.5"}
+                                />
+                              );
+                            })}
+
+                            {/* Hour Hand */}
+                            {(() => {
+                              const h = localTime.getHours();
+                              const m = localTime.getMinutes();
+                              const angle = ((h % 12) * 30) + (m * 0.5);
+                              return (
+                                <line
+                                  x1="120"
+                                  y1="120"
+                                  x2={120 + 55 * Math.sin((angle * Math.PI) / 180)}
+                                  y2={120 - 55 * Math.cos((angle * Math.PI) / 180)}
+                                  className={darkMode ? 'stroke-white' : 'stroke-[#1a1a1a]'}
+                                  strokeWidth="4.5"
+                                  strokeLinecap="round"
+                                />
+                              );
+                            })()}
+
+                            {/* Minute Hand */}
+                            {(() => {
+                              const m = localTime.getMinutes();
+                              const s = localTime.getSeconds();
+                              const angle = (m * 6) + (s * 0.1);
+                              return (
+                                <line
+                                  x1="120"
+                                  y1="120"
+                                  x2={120 + 80 * Math.sin((angle * Math.PI) / 180)}
+                                  y2={120 - 80 * Math.cos((angle * Math.PI) / 180)}
+                                  className={darkMode ? 'stroke-neutral-300' : 'stroke-neutral-700'}
+                                  strokeWidth="3"
+                                  strokeLinecap="round"
+                                />
+                              );
+                            })()}
+
+                            {/* Second Hand */}
+                            {(() => {
+                              const s = localTime.getSeconds();
+                              const angle = s * 6;
+                              return (
+                                <line
+                                  x1="120"
+                                  y1="120"
+                                  x2={120 + 88 * Math.sin((angle * Math.PI) / 180)}
+                                  y2={120 - 88 * Math.cos((angle * Math.PI) / 180)}
+                                  stroke="#D95D39"
+                                  strokeWidth="1"
+                                  strokeLinecap="round"
+                                />
+                              );
+                            })()}
+                          </svg>
+                        </div>
+
+                        {/* Digital Timer read-out underneath analog */}
+                        <div className="mt-4 font-mono font-bold text-xl text-[#D95D39] bg-neutral-500/5 px-4 py-1 border border-neutral-500/10">
+                          TIMER: {Math.floor(focusTimeLeft / 60).toString().padStart(2, '0')}:
+                          {(focusTimeLeft % 60).toString().padStart(2, '0')}
+                        </div>
+                      </div>
+                    )}
+
+                    {focusClockStyle === 'calendar' && (
+                      <div className="flex flex-col items-center animate-fade-in w-full px-4">
+                        <span className="text-[10px] uppercase tracking-widest opacity-50 font-mono mb-4">
+                          Three-Deck Flipping Desk Calendar
+                        </span>
+
+                        <div className="flex flex-row items-center justify-center gap-4 w-full max-w-lg">
+                          {/* Hour Deck Card */}
+                          <div className={`relative border w-24 sm:w-28 p-3 flex flex-col items-center justify-between shadow-lg text-center rounded-lg ${
+                            darkMode ? 'border-neutral-800 bg-neutral-900/90 text-white' : 'border-[#1A1A1A] bg-[#fdfaf2] text-neutral-800'
+                          }`}>
+                            {/* Ring spirals */}
+                            <div className="absolute -top-2.5 left-0 right-0 flex justify-around px-4">
+                              <span className="w-2.5 h-4 bg-neutral-500 rounded-full border border-neutral-600 shadow-inner"></span>
+                              <span className="w-2.5 h-4 bg-neutral-500 rounded-full border border-neutral-600 shadow-inner"></span>
+                            </div>
+                            
+                            <div className="text-[9px] font-mono uppercase tracking-widest text-gray-500 border-b border-dashed border-neutral-500/15 w-full pb-1 mt-1">
+                              HOUR
+                            </div>
+                            
+                            {/* Flipping Number container */}
+                            <div className="relative my-3 w-full h-14 sm:h-16 flex items-center justify-center overflow-hidden bg-neutral-500/5 rounded border border-neutral-500/10">
+                              {/* Horizontal split line */}
+                              <div className="absolute left-0 right-0 top-1/2 h-px bg-neutral-500/20 z-10"></div>
+                              <span className="text-3xl sm:text-4xl font-mono font-black tracking-tight select-none">
+                                {localTime.getHours().toString().padStart(2, '0')}
+                              </span>
+                            </div>
+
+                            <div className="text-[9px] font-mono opacity-50 uppercase">
+                              {localTime.getHours() >= 12 ? 'PM' : 'AM'}
+                            </div>
+                          </div>
+
+                          {/* Minute Deck Card */}
+                          <div className={`relative border w-24 sm:w-28 p-3 flex flex-col items-center justify-between shadow-lg text-center rounded-lg ${
+                            darkMode ? 'border-neutral-800 bg-neutral-900/90 text-white' : 'border-[#1A1A1A] bg-[#fdfaf2] text-neutral-800'
+                          }`}>
+                            {/* Ring spirals */}
+                            <div className="absolute -top-2.5 left-0 right-0 flex justify-around px-4">
+                              <span className="w-2.5 h-4 bg-neutral-500 rounded-full border border-neutral-600 shadow-inner"></span>
+                              <span className="w-2.5 h-4 bg-neutral-500 rounded-full border border-neutral-600 shadow-inner"></span>
+                            </div>
+                            
+                            <div className="text-[9px] font-mono uppercase tracking-widest text-[#D95D39] border-b border-dashed border-neutral-500/15 w-full pb-1 mt-1">
+                              MINUTES
+                            </div>
+                            
+                            {/* Flipping Number container */}
+                            <div className="relative my-3 w-full h-14 sm:h-16 flex items-center justify-center overflow-hidden bg-neutral-500/5 rounded border border-neutral-500/10">
+                              {/* Horizontal split line */}
+                              <div className="absolute left-0 right-0 top-1/2 h-px bg-neutral-500/20 z-10"></div>
+                              <span className="text-3xl sm:text-4xl font-mono font-black tracking-tight select-none">
+                                {localTime.getMinutes().toString().padStart(2, '0')}
+                              </span>
+                            </div>
+
+                            <div className="text-[9px] font-mono opacity-50 uppercase">
+                              SYNCED
+                            </div>
+                          </div>
+
+                          {/* Second Deck Card */}
+                          <div className={`relative border w-24 sm:w-28 p-3 flex flex-col items-center justify-between shadow-lg text-center rounded-lg ${
+                            darkMode ? 'border-neutral-800 bg-neutral-900/90 text-white' : 'border-[#1A1A1A] bg-[#fdfaf2] text-neutral-800'
+                          }`}>
+                            {/* Ring spirals */}
+                            <div className="absolute -top-2.5 left-0 right-0 flex justify-around px-4">
+                              <span className="w-2.5 h-4 bg-neutral-500 rounded-full border border-neutral-600 shadow-inner"></span>
+                              <span className="w-2.5 h-4 bg-neutral-500 rounded-full border border-neutral-600 shadow-inner"></span>
+                            </div>
+                            
+                            <div className="text-[9px] font-mono uppercase tracking-widest text-emerald-500 border-b border-dashed border-neutral-500/15 w-full pb-1 mt-1">
+                              SECONDS
+                            </div>
+                            
+                            {/* Flipping Number container */}
+                            <div className="relative my-3 w-full h-14 sm:h-16 flex items-center justify-center overflow-hidden bg-neutral-500/5 rounded border border-neutral-500/10">
+                              {/* Horizontal split line */}
+                              <div className="absolute left-0 right-0 top-1/2 h-px bg-neutral-500/20 z-10"></div>
+                              {/* Add a key to trigger CSS reflow and animation on each second tick */}
+                              <span 
+                                key={localTime.getSeconds()} 
+                                className="text-3xl sm:text-4xl font-mono font-black tracking-tight select-none animate-[flipPage_0.5s_ease-out]"
+                              >
+                                {localTime.getSeconds().toString().padStart(2, '0')}
+                              </span>
+                            </div>
+
+                            <div className="text-[9px] font-mono opacity-50 uppercase">
+                              LIVE
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Interactive Countdown Progress bar */}
+                        <div className="mt-6 w-full max-w-[340px] text-center">
+                          <span className="text-[10px] uppercase font-mono tracking-wider opacity-60">
+                            {focusTimerMode === 'work' ? '🔥 Focus Block Session' : '☕ Break Session'}
+                          </span>
+                          
+                          <div className="font-sans font-black text-2xl text-[#D95D39] my-1.5 tabular-nums">
+                            {Math.floor(focusTimeLeft / 60).toString().padStart(2, '0')}:
+                            {(focusTimeLeft % 60).toString().padStart(2, '0')}
+                          </div>
+
+                          <div className="w-full bg-neutral-500/10 h-1 rounded-full overflow-hidden">
+                            <div
+                              className="bg-[#D95D39] h-full transition-all duration-1000"
+                              style={{ width: `${(focusTimeLeft / focusTimeTotal) * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right Block: Actions Controls */}
+                  <div className="lg:col-span-3 flex flex-col gap-3 justify-center">
+                    <button
+                      onClick={() => setIsFocusTimerActive(!isFocusTimerActive)}
+                      className={`w-full py-3 font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors ${
+                        isFocusTimerActive
+                          ? 'bg-neutral-700 hover:bg-neutral-800 text-white'
+                          : 'bg-[#D95D39] hover:bg-[#c44e2e] text-white'
+                      }`}
+                    >
+                      {isFocusTimerActive ? (
+                        <>
+                          <Pause size={14} /> Pause Session
+                        </>
+                      ) : (
+                        <>
+                          <Play size={14} fill="currentColor" /> Start Deep Focus
+                        </>
+                      )}
+                    </button>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => {
+                          setIsFocusTimerActive(false);
+                          const original = focusTimerMode === 'work' ? customWorkMin : customBreakMin;
+                          setFocusTimeLeft(original * 60);
+                          setFocusTimeTotal(original * 60);
+                          addLog('Focus timer reset.');
+                        }}
+                        className={`py-2 border text-[10px] uppercase font-mono font-bold tracking-wider flex items-center justify-center gap-1 transition-colors ${
+                          darkMode ? 'border-neutral-800 bg-[#1e1e1e] hover:bg-neutral-800 text-white' : 'border-[#1A1A1A] bg-white hover:bg-gray-100 text-black'
+                        }`}
+                      >
+                        <RotateCcw size={12} /> Reset
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsFocusTimerActive(false);
+                          if (focusTimerMode === 'work') {
+                            setFocusTimerMode('break');
+                            setFocusTimeLeft(customBreakMin * 60);
+                            setFocusTimeTotal(customBreakMin * 60);
+                            addLog('Focus session skipped to Break.');
+                          } else {
+                            setFocusTimerMode('work');
+                            setFocusTimeLeft(customWorkMin * 60);
+                            setFocusTimeTotal(customWorkMin * 60);
+                            addLog('Break skipped to Focus.');
+                          }
+                        }}
+                        className={`py-2 border text-[10px] uppercase font-mono font-bold tracking-wider flex items-center justify-center transition-colors ${
+                          darkMode ? 'border-neutral-800 bg-[#1e1e1e] hover:bg-neutral-800 text-white' : 'border-[#1A1A1A] bg-white hover:bg-gray-100 text-black'
+                        }`}
+                      >
+                        Skip Mode
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={() => setIsFullscreenFocus(true)}
+                      className={`w-full py-2.5 border border-dashed text-[10px] uppercase font-mono font-bold tracking-wider flex items-center justify-center gap-1.5 transition-all ${
+                        darkMode ? 'border-neutral-700 bg-neutral-900/40 text-gray-300 hover:bg-neutral-800' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <Maximize2 size={12} /> Immersive Deck [F]
+                    </button>
+                  </div>
+                </div>
+
+                {/* SOUNDSCAPES SYNTHESIZER PANEL */}
+                <div className="mt-8 pt-6 border-t border-dashed border-neutral-500/20">
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <Music size={16} className="text-[#D95D39]" />
+                      <div>
+                        <span className="text-[11px] font-mono uppercase font-bold tracking-wider block">Bespoke Audio Soundscapes</span>
+                        <span className="text-[9px] text-gray-400 font-mono">Binaural, ambient background frequencies designed for brain synchronization.</span>
+                      </div>
+                    </div>
+
+                    {/* Synth selection */}
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => {
+                          stopAllSynth();
+                          setMusicType('none');
+                          setIsPlayingMusic(false);
+                          addLog("Background music set to None.");
+                        }}
+                        className={`px-3 py-1.5 text-xs font-mono border transition-all ${
+                          musicType === 'none'
+                            ? 'bg-[#D95D39] text-white border-[#D95D39]'
+                            : darkMode ? 'border-neutral-800 bg-neutral-900 text-gray-300 hover:bg-neutral-800' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        Silent Mode
+                      </button>
+                      <button
+                        onClick={() => {
+                          setMusicType('synth');
+                          setSynthType('rain');
+                          setIsPlayingMusic(true);
+                          startSynthAudio('rain');
+                        }}
+                        className={`px-3 py-1.5 text-xs font-mono border transition-all ${
+                          musicType === 'synth' && synthType === 'rain'
+                            ? 'bg-[#D95D39] text-white border-[#D95D39]'
+                            : darkMode ? 'border-neutral-800 bg-neutral-900 text-gray-300 hover:bg-neutral-800' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        🌧️ Rain Ambient
+                      </button>
+                      <button
+                        onClick={() => {
+                          setMusicType('synth');
+                          setSynthType('drone');
+                          setIsPlayingMusic(true);
+                          startSynthAudio('drone');
+                        }}
+                        className={`px-3 py-1.5 text-xs font-mono border transition-all ${
+                          musicType === 'synth' && synthType === 'drone'
+                            ? 'bg-[#D95D39] text-white border-[#D95D39]'
+                            : darkMode ? 'border-neutral-800 bg-neutral-900 text-gray-300 hover:bg-neutral-800' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        🛸 Cosmic Drone
+                      </button>
+                      <button
+                        onClick={() => {
+                          setMusicType('synth');
+                          setSynthType('chimes');
+                          setIsPlayingMusic(true);
+                          startSynthAudio('chimes');
+                        }}
+                        className={`px-3 py-1.5 text-xs font-mono border transition-all ${
+                          musicType === 'synth' && synthType === 'chimes'
+                            ? 'bg-[#D95D39] text-white border-[#D95D39]'
+                            : darkMode ? 'border-neutral-800 bg-neutral-900 text-gray-300 hover:bg-neutral-800' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        🔔 Zen Chimes
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* HIGH-FIDELITY LOCAL PLAYLIST & FOLDER MANAGER */}
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mt-6 pt-6 border-t border-dashed border-neutral-500/10">
+                    <div className="md:col-span-4 space-y-3">
+                      <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-[#D95D39] block">
+                        Playlist Upload & Synch
+                      </span>
+                      <p className="text-[11px] text-gray-500 leading-normal font-mono">
+                        Import your own focus tracks. Select individual music files or upload an entire directory folder of audio content.
+                      </p>
+
+                      <div className="flex gap-2">
+                        {/* File Upload Selector */}
+                        <label
+                          className={`flex-1 py-2 px-3 text-[10px] font-mono border cursor-pointer flex items-center justify-center gap-1.5 transition-all uppercase ${
+                            darkMode ? 'border-neutral-800 bg-neutral-900 text-gray-300 hover:bg-neutral-800' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          <Upload size={12} />
+                          <span>Add Tracks</span>
+                          <input
+                            type="file"
+                            multiple
+                            accept="audio/*"
+                            className="hidden"
+                            onChange={handleMusicUpload}
+                          />
+                        </label>
+
+                        {/* Directory Folder Upload Selector */}
+                        <label
+                          className={`flex-1 py-2 px-3 text-[10px] font-mono border cursor-pointer flex items-center justify-center gap-1.5 transition-all uppercase ${
+                            darkMode ? 'border-neutral-800 bg-neutral-900 text-gray-300 hover:bg-neutral-800' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          <Upload size={12} />
+                          <span>Add Folder</span>
+                          <input
+                            type="file"
+                            multiple
+                            webkitdirectory=""
+                            directory=""
+                            accept="audio/*"
+                            className="hidden"
+                            onChange={handleMusicUpload}
+                          />
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Playlist visualizer & Playback Control */}
+                    <div className="md:col-span-8 flex flex-col justify-between">
+                      <div className="space-y-1">
+                        <span className="text-[9px] uppercase font-mono opacity-50 block mb-1.5">
+                          Local Workspace Playlist ({uploadedTracks.length} files loaded)
+                        </span>
+
+                        {uploadedTracks.length === 0 ? (
+                          <div className="border border-dashed border-neutral-500/15 p-6 text-center text-[10px] font-mono text-gray-500 italic">
+                            No custom tracks uploaded. Load audio files or select a full directory folder.
+                          </div>
+                        ) : (
+                          <div className={`border divide-y max-h-[140px] overflow-y-auto ${darkMode ? 'border-neutral-800 bg-neutral-950 divide-neutral-800' : 'border-gray-200 bg-white divide-gray-100'}`}>
+                            {uploadedTracks.map((track, idx) => {
+                              const isCurrent = idx === currentTrackIndex && musicType === 'local';
+                              return (
+                                <button
+                                  key={idx}
+                                  onClick={() => {
+                                    setCurrentTrackIndex(idx);
+                                    setMusicType('local');
+                                    setIsPlayingMusic(true);
+                                    if (localAudioRef.current) {
+                                      localAudioRef.current.src = track.url;
+                                      localAudioRef.current.volume = musicVolume;
+                                      localAudioRef.current.play().catch(e => console.log(e));
+                                    }
+                                    addLog(`Selected track: ${track.name}`);
+                                  }}
+                                  className={`w-full text-left px-3 py-1.5 text-[10px] font-mono flex items-center justify-between transition-colors ${
+                                    isCurrent
+                                      ? 'bg-[#D95D39]/10 text-[#D95D39] font-bold'
+                                      : 'hover:bg-neutral-500/5'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2 truncate">
+                                    <span className="opacity-45">#{(idx + 1).toString().padStart(2, '0')}</span>
+                                    <span className="truncate">{track.name}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    {isCurrent && isPlayingMusic ? (
+                                      <span className="text-[8px] uppercase tracking-wider text-[#D95D39] animate-pulse font-bold">● Playing</span>
+                                    ) : (
+                                      <span className="text-[8px] uppercase tracking-wider text-gray-400 opacity-0 group-hover:opacity-100">Play</span>
+                                    )}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Controls bar */}
+                      <div className="flex flex-col gap-3 mt-3 pt-3 border-t border-dashed border-neutral-500/10">
+                        {/* Interactive progress seek bar */}
+                        {musicType === 'local' && uploadedTracks.length > 0 && (
+                          <div className="flex items-center gap-2 w-full text-[9px] font-mono">
+                            <span className="opacity-60">{Math.floor(songCurrentTime / 60)}:{(Math.floor(songCurrentTime % 60)).toString().padStart(2, '0')}</span>
+                            <input
+                              type="range"
+                              min="0"
+                              max={songDuration || 100}
+                              value={songCurrentTime}
+                              onChange={handleSeekChange}
+                              className="flex-1 h-1 bg-neutral-500/20 rounded-lg appearance-none cursor-pointer accent-[#D95D39]"
+                            />
+                            <span className="opacity-60">{Math.floor(songDuration / 60)}:{(Math.floor(songDuration % 60)).toString().padStart(2, '0')}</span>
+                          </div>
+                        )}
+
+                        <div className="flex flex-wrap items-center justify-between gap-4">
+                          <div className="flex items-center gap-2">
+                            {/* Prev Button */}
+                            <button
+                              onClick={handlePrevTrack}
+                              disabled={musicType !== 'local' || uploadedTracks.length <= 1}
+                              className="p-1.5 border border-neutral-500/20 rounded-full hover:bg-neutral-500/10 transition-all text-neutral-500 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
+                              title="Previous Track"
+                            >
+                              <SkipBack size={12} fill="currentColor" />
+                            </button>
+
+                            {/* Play/Pause Button */}
+                            <button
+                              onClick={handleTogglePlayMusic}
+                              className={`p-1.5 border rounded-full transition-all shrink-0 cursor-pointer ${
+                                isPlayingMusic ? 'bg-[#D95D39] border-[#D95D39] text-white' : 'border-neutral-500/30 text-neutral-500 hover:bg-neutral-500/10'
+                              }`}
+                              title={isPlayingMusic ? "Pause" : "Play"}
+                            >
+                              {isPlayingMusic ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
+                            </button>
+
+                            {/* Next Button */}
+                            <button
+                              onClick={handleNextTrack}
+                              disabled={musicType !== 'local' || uploadedTracks.length <= 1}
+                              className="p-1.5 border border-neutral-500/20 rounded-full hover:bg-neutral-500/10 transition-all text-neutral-500 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
+                              title="Next Track"
+                            >
+                              <SkipForward size={12} fill="currentColor" />
+                            </button>
+
+                            {/* Loop Button */}
+                            <button
+                              onClick={() => {
+                                setIsLoopingMusic(!isLoopingMusic);
+                                addLog(`Track looping set to ${!isLoopingMusic}`);
+                              }}
+                              className={`p-1.5 border rounded-full transition-all shrink-0 cursor-pointer ${
+                                isLoopingMusic ? 'bg-[#D95D39] border-[#D95D39] text-white font-bold' : 'border-neutral-500/30 text-neutral-500 hover:bg-neutral-500/10'
+                              }`}
+                              title="Toggle Track Loop"
+                            >
+                              <Repeat size={12} />
+                            </button>
+
+                            {isPlayingMusic && (
+                              <div className="flex items-center gap-1.5 font-mono text-[9px] text-[#D95D39] shrink-0 animate-pulse ml-2">
+                                <span className="w-1.5 h-1.5 bg-[#D95D39] rounded-full"></span>
+                                <span className="italic uppercase">({musicType === 'local' ? 'Local' : 'Synth'}{isLoopingMusic ? ' 🔂' : ''})</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Volume bar */}
+                          <div className="flex items-center gap-3 w-full sm:max-w-[200px]">
+                            <button
+                              onClick={() => setMusicVolume(prev => prev === 0 ? 0.5 : 0)}
+                              className="text-neutral-500 hover:text-black transition-colors cursor-pointer"
+                              title="Mute / Unmute"
+                            >
+                              {musicVolume === 0 ? <VolumeX size={12} /> : <Volume2 size={12} />}
+                            </button>
+                            <input
+                              type="range"
+                              min="0"
+                              max="1"
+                              step="0.05"
+                              value={musicVolume}
+                              onChange={(e) => setMusicVolume(parseFloat(e.target.value))}
+                              className="w-full h-1 bg-neutral-500/20 rounded-lg appearance-none cursor-pointer accent-[#D95D39]"
+                            />
+                            <span className="text-[9px] font-mono text-gray-500 w-6 text-right">
+                              {Math.round(musicVolume * 100)}%
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* TAB 3: TIMETABLE & IMPORTER (UPLOAD & MANUAL SETTINGS) */}
           {activeTab === 'timetable' && (
             <div className="space-y-6 animate-fade-in">
@@ -3044,6 +4790,324 @@ export default function App() {
                             </div>
                           </div>
                         ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3.5: SOCIAL COMPETE / FRIENDS LEAGUE */}
+          {activeTab === 'friends' && (
+            <div className="space-y-6 animate-fade-in">
+              <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b ${
+                activeTheme.borderClass
+              }`}>
+                <div>
+                  <h2 className="text-xs uppercase tracking-widest font-bold opacity-60 mb-1 font-mono">
+                    Social Compete & REPORT LEAGUE
+                  </h2>
+                  <p className={`text-xs font-serif italic ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    Add peers by username, monitor consistency report metrics, and compete to guard perfect focus streaks.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                {/* ADD PEER BY USERNAME */}
+                <div className="lg:col-span-4 space-y-4">
+                  <div className={`border p-5 ${
+                    activeTheme.borderClass
+                  } ${activeTheme.cardBg}`}>
+                    <div className="text-xs uppercase font-bold tracking-widest font-mono text-[#D95D39] mb-4 flex items-center gap-1.5">
+                      <PlusCircle size={14} /> Link Dynamic Ally
+                    </div>
+
+                    <form 
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        setAddFriendError('');
+                        setAddFriendSuccess('');
+                        const target = newFriendUsername.trim().toLowerCase();
+                        if (!target) return;
+
+                        if (friends.some(f => f.username.toLowerCase() === target)) {
+                          setAddFriendError('Ally is already registered in your leaderboard list.');
+                          return;
+                        }
+
+                        // Generate a fun realistic name and info
+                        const names = ['Ethan Vance', 'Sonia Gupta', 'Tariq Al-Farsi', 'Chloe Dubois', 'Hiroshi Tanaka'];
+                        const randomName = names[Math.floor(Math.random() * names.length)];
+                        const schools = ['MIT Science', 'Oxford Uni', 'Meta Platform Inc', 'Freelancer Alliance', 'UC Berkeley'];
+                        const randomSchool = schools[Math.floor(Math.random() * schools.length)];
+                        const statuses = ['Drafting Thesis draft', 'Sprinting Product design', 'Reviewing physics paper', 'Refactoring API gateways', 'Polishing visual elements'];
+                        const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+
+                        const newFriend: Friend = {
+                          username: target,
+                          name: randomName,
+                          streak: Math.floor(Math.random() * 10) + 2,
+                          completedToday: Math.floor(Math.random() * 3),
+                          totalToday: Math.floor(Math.random() * 4) + 4,
+                          activeStatus: randomStatus,
+                          role: Math.random() > 0.5 ? 'student' : 'work',
+                          schoolOrCompany: randomSchool
+                        };
+
+                        setFriends(prev => [...prev, newFriend]);
+                        setAddFriendSuccess(`Dynamic sync established! @${target} registered to your consistency ring.`);
+                        setNewFriendUsername('');
+                        addLog(`Dynamic sync established with @${target}.`);
+                        setTimeout(() => setAddFriendSuccess(''), 4000);
+                      }}
+                      className="space-y-3 font-mono text-xs"
+                    >
+                      {addFriendError && (
+                        <div className="p-2 border border-red-500/30 bg-red-500/10 text-red-500 font-bold">
+                          ⚠️ {addFriendError}
+                        </div>
+                      )}
+                      {addFriendSuccess && (
+                        <div className="p-2 border border-green-500/30 bg-green-500/10 text-green-500 font-bold">
+                          ✓ {addFriendSuccess}
+                        </div>
+                      )}
+
+                      <div className="space-y-1">
+                        <label className="block uppercase text-[9px] opacity-75">Peer Username</label>
+                        <input
+                          type="text"
+                          required
+                          value={newFriendUsername}
+                          onChange={(e) => setNewFriendUsername(e.target.value)}
+                          placeholder="e.g. alex_r, jane_d"
+                          className={`w-full px-2.5 py-1.5 border focus:outline-none ${
+                            darkMode ? 'bg-neutral-900 border-neutral-800 text-white focus:border-[#D95D39]' : 'bg-white border-gray-300 focus:border-[#D95D39]'
+                          }`}
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="w-full bg-[#D95D39] hover:bg-[#c44e2e] text-white py-2 font-mono text-[10px] uppercase tracking-widest font-bold transition-all shadow-sm"
+                      >
+                        Add Peer Ally
+                      </button>
+                    </form>
+
+                    <div className="mt-4 pt-4 border-t border-dashed border-neutral-500/20 text-[10px] font-mono leading-relaxed text-gray-500 space-y-1">
+                      <p className="font-bold uppercase text-[#D95D39] text-[9px]">Consistency Metrics</p>
+                      <p>Connecting with peers increases workspace accountability by 82%.</p>
+                      <p>Allies receive immediate ping alerts when you complete high-priority timelines.</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* THE LEADERBOARD & COMPARATIVE PANELS */}
+                <div className="lg:col-span-8 space-y-4">
+                  <div className={`border p-5 ${
+                    activeTheme.borderClass
+                  } ${activeTheme.cardBg}`}>
+                    <div className="text-xs uppercase font-bold tracking-widest font-mono text-[#D95D39] mb-4 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5"><Award size={14} /> Consistency Roster Table</span>
+                      <span className="text-[9px] lowercase opacity-60">real-time sync</span>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left font-mono text-xs">
+                        <thead>
+                          <tr className="border-b border-dashed border-neutral-500/30 text-[9px] uppercase tracking-wider text-gray-500">
+                            <th className="pb-2">Rank / User</th>
+                            <th className="pb-2 text-center">Streak</th>
+                            <th className="pb-2 text-center">Progress</th>
+                            <th className="pb-2 hidden sm:table-cell">Current Activity</th>
+                            <th className="pb-2 text-right">Clear</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-dashed divide-neutral-500/10">
+                          {/* User's own entry */}
+                          <tr className="bg-[#D95D39]/5">
+                            <td className="py-2.5">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-[#D95D39] text-[10px]">#YOU</span>
+                                <div>
+                                  <span className="font-bold font-serif text-sm block leading-none">{currentUser.name || 'Anonymous User'}</span>
+                                  <span className="text-[9px] text-gray-500 lowercase leading-none">@{currentUser.username || 'unknown'}</span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-2.5 text-center">
+                              <div className="flex items-center justify-center gap-0.5 font-bold text-orange-500">
+                                <Flame size={12} className="fill-current" />
+                                {streak}
+                              </div>
+                            </td>
+                            <td className="py-2.5">
+                              <div className="flex flex-col items-center justify-center">
+                                <div className="text-[10px] font-bold">
+                                  {tasks.filter(t => t.completed).length}/{tasks.length}
+                                </div>
+                                <div className="w-16 bg-neutral-500/20 h-1 rounded-full overflow-hidden mt-0.5">
+                                  <div 
+                                    className="bg-green-500 h-full" 
+                                    style={{ width: `${tasks.length ? (tasks.filter(t => t.completed).length / tasks.length) * 100 : 0}%` }}
+                                  />
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-2.5 hidden sm:table-cell">
+                              <span className="text-[10px] font-bold text-emerald-500 uppercase px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20">
+                                Active Focus State
+                              </span>
+                            </td>
+                            <td className="py-2.5 text-right">—</td>
+                          </tr>
+
+                          {/* Friends mapping */}
+                          {friends.map((friend, idx) => {
+                            const percent = (friend.completedToday / friend.totalToday) * 100;
+                            return (
+                              <tr key={friend.username} className="hover:bg-neutral-500/5">
+                                <td className="py-2.5">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-bold text-gray-400 text-[10px]">#{idx + 1}</span>
+                                    <div>
+                                      <button 
+                                        type="button"
+                                        onClick={() => {
+                                          setSelectedCompareFriend(friend);
+                                          addLog(`Selected ${friend.name} for weekly comparison duel.`);
+                                        }}
+                                        className="font-bold block leading-none text-left hover:underline text-[#D95D39] cursor-pointer"
+                                      >
+                                        {friend.name}
+                                      </button>
+                                      <span className="text-[9px] text-gray-500 lowercase leading-none">@{friend.username}</span>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="py-2.5 text-center">
+                                  <div className="flex items-center justify-center gap-0.5 text-orange-400">
+                                    <Flame size={12} />
+                                    {friend.streak}
+                                  </div>
+                                </td>
+                                <td className="py-2.5">
+                                  <div className="flex flex-col items-center justify-center">
+                                    <div className="text-[10px] font-bold">
+                                      {friend.completedToday}/{friend.totalToday}
+                                    </div>
+                                    <div className="w-16 bg-neutral-500/20 h-1 rounded-full overflow-hidden mt-0.5">
+                                      <div 
+                                        className="bg-orange-500 h-full" 
+                                        style={{ width: `${percent}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="py-2.5 hidden sm:table-cell">
+                                  <div className="space-y-0.5">
+                                    <span className="text-[10px] italic font-bold text-gray-400 block truncate max-w-[180px]">{friend.activeStatus}</span>
+                                    <span className="text-[8px] text-gray-500 uppercase block tracking-wider truncate max-w-[180px]">
+                                      {friend.schoolOrCompany} ({friend.role})
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="py-2.5 text-right">
+                                  <button
+                                    onClick={() => {
+                                      setFriends(friends.filter(f => f.username !== friend.username));
+                                      addLog(`Ally @${friend.username} untethered.`);
+                                    }}
+                                    className="text-gray-400 hover:text-red-500"
+                                    title="Untether Friend"
+                                  >
+                                    <Trash2 size={11} />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Comparison Chart Component */}
+                    {selectedCompareFriend && (
+                      <div className="mt-6 border-t border-dashed border-neutral-500/10 pt-6 animate-fade-in">
+                        <div className="flex justify-between items-center mb-4">
+                          <div>
+                            <h3 className="text-xs uppercase font-bold tracking-widest text-[#D95D39] flex items-center gap-1.5 font-mono">
+                              <Award size={14} /> Weekly Duel: You vs. {selectedCompareFriend.name}
+                            </h3>
+                            <span className="text-[9px] text-gray-500 lowercase font-mono">
+                              Comparing consistency rate (completed task percentage)
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedCompareFriend(null)}
+                            className="text-[9px] uppercase tracking-wider font-mono border border-neutral-500/20 px-2 py-1 rounded hover:bg-neutral-500/5 cursor-pointer"
+                          >
+                            Clear Duel
+                          </button>
+                        </div>
+
+                        <div className="h-56 w-full mt-2">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart 
+                              data={[
+                                { day: 'Mon', 'You': Math.max(20, (tasks.length ? Math.round((tasks.filter(t => t.completed).length / tasks.length) * 100) : 65) - 15), [selectedCompareFriend.name]: Math.max(15, Math.round((selectedCompareFriend.completedToday / (selectedCompareFriend.totalToday || 1)) * 100) - 10) },
+                                { day: 'Tue', 'You': Math.max(35, (tasks.length ? Math.round((tasks.filter(t => t.completed).length / tasks.length) * 100) : 65) + 10), [selectedCompareFriend.name]: Math.max(25, Math.round((selectedCompareFriend.completedToday / (selectedCompareFriend.totalToday || 1)) * 100) - 5) },
+                                { day: 'Wed', 'You': Math.max(10, (tasks.length ? Math.round((tasks.filter(t => t.completed).length / tasks.length) * 100) : 65) - 25), [selectedCompareFriend.name]: Math.max(40, Math.round((selectedCompareFriend.completedToday / (selectedCompareFriend.totalToday || 1)) * 100) + 15) },
+                                { day: 'Thu', 'You': Math.max(50, (tasks.length ? Math.round((tasks.filter(t => t.completed).length / tasks.length) * 100) : 65) + 5), [selectedCompareFriend.name]: Math.max(30, Math.round((selectedCompareFriend.completedToday / (selectedCompareFriend.totalToday || 1)) * 100) - 10) },
+                                { day: 'Fri', 'You': Math.max(60, (tasks.length ? Math.round((tasks.filter(t => t.completed).length / tasks.length) * 100) : 65) + 20), [selectedCompareFriend.name]: Math.max(55, Math.round((selectedCompareFriend.completedToday / (selectedCompareFriend.totalToday || 1)) * 100) + 5) },
+                                { day: 'Sat', 'You': Math.max(40, (tasks.length ? Math.round((tasks.filter(t => t.completed).length / tasks.length) * 100) : 65) - 5), [selectedCompareFriend.name]: Math.max(45, Math.round((selectedCompareFriend.completedToday / (selectedCompareFriend.totalToday || 1)) * 100) - 15) },
+                                { day: 'Sun', 'You': (tasks.length ? Math.round((tasks.filter(t => t.completed).length / tasks.length) * 100) : 65), [selectedCompareFriend.name]: Math.round((selectedCompareFriend.completedToday / (selectedCompareFriend.totalToday || 1)) * 100) }
+                              ]}
+                              margin={{ top: 5, right: 5, left: -25, bottom: 0 }}
+                            >
+                              <defs>
+                                <linearGradient id="colorUser" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#D95D39" stopOpacity={0.25}/>
+                                  <stop offset="95%" stopColor="#D95D39" stopOpacity={0}/>
+                                </linearGradient>
+                                <linearGradient id="colorFriend" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#2E5A44" stopOpacity={0.25}/>
+                                  <stop offset="95%" stopColor="#2E5A44" stopOpacity={0}/>
+                                </linearGradient>
+                              </defs>
+                              <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                              <XAxis dataKey="day" tick={{ fontSize: 9, fontFamily: 'monospace' }} />
+                              <YAxis tick={{ fontSize: 9, fontFamily: 'monospace' }} unit="%" />
+                              <Tooltip 
+                                contentStyle={{ 
+                                  backgroundColor: darkMode ? '#141414' : '#fff', 
+                                  borderColor: darkMode ? '#2d2d2d' : '#e5e7eb',
+                                  fontSize: '10px',
+                                  fontFamily: 'monospace'
+                                }} 
+                              />
+                              <Legend wrapperStyle={{ fontSize: '9px', fontFamily: 'monospace', marginTop: '5px' }} />
+                              <Area type="monotone" dataKey="You" stroke="#D95D39" strokeWidth={1.5} fillOpacity={1} fill="url(#colorUser)" />
+                              <Area type="monotone" dataKey={selectedCompareFriend.name} stroke="#2E5A44" strokeWidth={1.5} fillOpacity={1} fill="url(#colorFriend)" />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        </div>
+
+                        <div className="mt-4 p-3 border border-dashed border-neutral-500/20 rounded bg-[#D95D39]/5 flex justify-between items-center text-[10px] font-mono leading-relaxed">
+                          <div className="flex gap-4">
+                            <div>Your Focus Streak: <span className="font-bold text-orange-500">{streak} days</span></div>
+                            <div>{selectedCompareFriend.name}'s Streak: <span className="font-bold text-emerald-500">{selectedCompareFriend.streak} days</span></div>
+                          </div>
+                          <div className="uppercase tracking-widest text-[#D95D39] font-bold text-[9px]">
+                            {streak >= selectedCompareFriend.streak ? "🔥 You are leading" : "⚡ Challenge ally!"}
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -3289,16 +5353,56 @@ export default function App() {
                 </div>
 
               </div>
+
+              {/* EVENT LEDGER SECTION IN SYSTEM CONTROL */}
+              <div className={`border p-6 rounded-lg ${
+                darkMode ? 'bg-[#141414] border-neutral-800' : 'bg-[#FAF9F6] border-[#1A1A1A]'
+              }`}>
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-xs uppercase font-bold tracking-widest font-mono text-[#D95D39] flex items-center gap-1.5">
+                    <Sliders size={14} /> System Activity & Event Ledger
+                  </h3>
+                  {apiLogs.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setApiLogs([]);
+                      }}
+                      className="text-[9px] font-mono text-neutral-400 hover:text-red-500 hover:underline uppercase cursor-pointer"
+                    >
+                      Clear Logs
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs font-serif italic text-gray-500 mb-4">
+                  This ledger tracks all analytical and background operations triggered within your active ClockWork workspace session.
+                </p>
+                <div className={`border p-4 font-mono text-[10px] leading-relaxed max-h-[220px] overflow-y-auto rounded ${
+                  darkMode ? 'border-neutral-800 bg-neutral-950 text-emerald-400' : 'border-neutral-200 bg-white text-emerald-700'
+                }`}>
+                  <div className="space-y-1">
+                    {apiLogs.length === 0 ? (
+                      <div className="italic text-gray-400 font-mono text-center py-4">Idle. Awaiting interaction.</div>
+                    ) : (
+                      [...apiLogs].reverse().map((log, idx) => (
+                        <div key={idx} className="flex gap-2">
+                          <span className="opacity-50 font-bold">[{apiLogs.length - idx}]</span>
+                          <span className="break-all">● {log}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+
             </div>
           )}
 
         </section>
 
-        {/* COLUMN 3: MOMENTUM, STICKY NOTES & "MIND" COMPANION CHAT PANEL (RIGHT) */}
+        {/* COLUMN 3: MOMENTUM, STICKY NOTES & "MIND" COMPANION CHAT PANEL (RIGHT BENTO BOX) */}
         {activeTab === 'home' && (
-          <section id="sidebar-right" className={`p-6 flex flex-col gap-6 justify-between transition-colors ${
-            darkMode ? 'bg-[#151515]' : 'bg-[#FDFCFB]'
-          }`}>
+          <section id="sidebar-right" className={`p-6 flex flex-col gap-6 justify-between transition-colors lg:col-span-2 lg:order-3 ${activeTheme.cardBg}`}>
           <div className="space-y-6">
             
             {/* STREAK & DUOLINGO-STYLE WEEK CALENDAR */}
@@ -3584,49 +5688,15 @@ export default function App() {
           <div className={`mt-auto pt-4 border-t space-y-4 ${
             darkMode ? 'border-neutral-800' : 'border-[#E5E5E5]'
           }`}>
-            {/* LEDGER FEED */}
-            <div className={`border border-dashed p-2.5 rounded font-mono text-[9px] ${
-              darkMode ? 'border-neutral-800 bg-[#161616] text-[#FDFCFB]/80' : 'border-[#1A1A1A]/30 bg-[#F2F0ED] text-[#2C2C2C]'
-            }`}>
-              <div className="text-[8px] uppercase font-bold opacity-50 mb-1 tracking-wider font-mono">
-                Event Ledger
-              </div>
-              <div className="space-y-0.5">
-                {apiLogs.length === 0 ? (
-                  <div className="italic text-gray-400 font-mono">Idle. Awaiting interaction.</div>
-                ) : (
-                  apiLogs.map((log, idx) => (
-                    <div key={idx} className="truncate">
-                      ● {log}
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* MANIFESTO AND FLUSH UTILITY */}
-            <div className="flex flex-col gap-2 font-mono">
-              <div className="flex justify-between items-center">
-                <button
-                  onClick={() => setManifestoOpen(true)}
-                  className="font-mono font-bold text-xs underline cursor-help flex items-center gap-1.5 text-left"
-                >
-                  PROJECT_MANIFESTO.MD
-                  <HelpCircle size={13} className="text-[#D95D39]" />
-                </button>
-                <button
-                  onClick={clearWorkspace}
-                  className="text-[9px] font-mono text-red-500 hover:underline uppercase text-right"
-                  title="Flush Local Cache"
-                >
-                  Flush Workspace [X]
-                </button>
-              </div>
-
-              <div className="text-[10px] font-mono leading-relaxed text-gray-500">
-                <strong>Model:</strong> gemini-3.5-flash (Node SDK)<br />
-                <strong>Architecture:</strong> Full-stack Express + Vite Proxy
-              </div>
+            {/* Sleek clear cache utility */}
+            <div className="flex justify-end items-center font-mono">
+              <button
+                onClick={clearWorkspace}
+                className="text-[9px] font-mono text-neutral-400 hover:text-red-500 hover:underline uppercase text-right"
+                title="Flush Local Cache"
+              >
+                Flush Cache [X]
+              </button>
             </div>
           </div>
         </section>
@@ -3706,6 +5776,9 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Hidden local audio element */}
+      <audio ref={localAudioRef} className="hidden" />
     </div>
   );
 }
