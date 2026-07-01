@@ -71,6 +71,7 @@ import {
   Pie,
   Cell
 } from 'recharts';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface ThemeConfig {
   id: string;
@@ -235,6 +236,618 @@ interface Friend {
   schoolOrCompany: string;
 }
 
+interface AppleMusicLyricProps {
+  current: string;
+  next: string;
+  progress: number;
+  idx: number;
+  size?: 'sm' | 'md' | 'lg';
+  darkMode: boolean;
+  backdrop?: boolean;
+}
+
+const AppleMusicLyric: React.FC<AppleMusicLyricProps> = ({ current, next, progress, idx, size = 'md', darkMode, backdrop = true }) => {
+  const sizeClasses = {
+    sm: 'text-xs sm:text-sm font-semibold',
+    md: 'text-sm sm:text-base font-bold',
+    lg: 'text-lg sm:text-2xl font-extrabold tracking-wide'
+  };
+
+  const nextSizeClasses = {
+    sm: 'text-[9px] mt-1',
+    md: 'text-[10px] mt-1.5',
+    lg: 'text-xs mt-2'
+  };
+
+  // High contrast colors that are extremely readable in both dark and light modes
+  const highlightColor = darkMode ? '#FF7F50' : '#D95D39'; // Glowing Coral Orange vs Rich Terracotta
+  const baseColor = darkMode ? '#FFFFFF' : '#374151'; // Crisp pure white vs Premium Slate Charcoal
+
+  return (
+    <div className="flex flex-col items-center justify-center text-center w-full py-2 px-4 transition-all duration-300">
+      <p 
+        key={idx} 
+        className={`lyric-slide-up font-serif italic leading-relaxed text-center max-w-full break-words ${sizeClasses[size]}`}
+        style={darkMode ? {
+          filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.75)) drop-shadow(0 1px 1px rgba(0,0,0,0.9))'
+        } : undefined}
+      >
+        <span 
+          className="bg-clip-text text-transparent transition-all duration-100"
+          style={{
+            backgroundImage: `linear-gradient(90deg, ${highlightColor} 0%, ${highlightColor} ${progress * 100}%, ${baseColor} ${progress * 100}%)`,
+            WebkitBackgroundClip: 'text',
+            backgroundClip: 'text',
+          }}
+        >
+          "{current || "..."}"
+        </span>
+      </p>
+
+      {/* Modern, elegant line progress indicator directly under the lyrics */}
+      <div className="w-24 sm:w-32 h-0.5 bg-neutral-300/30 dark:bg-neutral-700/50 rounded-full overflow-hidden mt-3.5 mx-auto shadow-sm">
+        <div 
+          className="h-full bg-[#D95D39] rounded-full transition-all duration-100 ease-out" 
+          style={{ width: `${Math.min(100, Math.max(0, progress * 100))}%` }}
+        />
+      </div>
+
+      {next && (
+        <p 
+          className={`text-neutral-500 dark:text-neutral-400 italic mt-2.5 truncate max-w-full ${nextSizeClasses[size]}`}
+          style={darkMode ? {
+            filter: 'drop-shadow(0 1.5px 3px rgba(0,0,0,0.8))'
+          } : undefined}
+        >
+          Next: {next}
+        </p>
+      )}
+    </div>
+  );
+};
+
+// --- IMMERSIVE SCREEN ATMOSPHERES ---
+const BirdAtmosphere = () => {
+  const birdColors = ['#D95D39', '#E97E5B', '#F7A072', '#F4B400', '#4A90E2', '#50E3C2', '#9013FE', '#B8E986'];
+  const notes = ['♫', '♪', '♬', '♩', '♭', '🎵', '🎶'];
+
+  // Targeted coordinates to sit "on" the timer or other UI components
+  const uiTargets = [
+    { name: 'Timer Accent', x: 50, y: 22 },      // Right above the center clock
+    { name: 'Left Column Card', x: 18, y: 32 },   // Left Column card
+    { name: 'Right Column Panel', x: 82, y: 32 }, // Right Column panel
+    { name: 'Header Bar', x: 50, y: 6 }           // Top Header bar
+  ];
+
+  const getNewTarget = () => {
+    // 50% chance to target a real UI element, 50% chance completely random
+    if (Math.random() > 0.5) {
+      const selected = uiTargets[Math.floor(Math.random() * uiTargets.length)];
+      return { x: selected.x, y: selected.y };
+    }
+    return {
+      x: 10 + Math.random() * 80,
+      y: 10 + Math.random() * 70
+    };
+  };
+
+  const [birds, setBirds] = useState<any[]>(() => {
+    const count = 4 + Math.floor(Math.random() * 3); // 4 to 6 birds
+    return Array.from({ length: count }).map((_, i) => {
+      const fromLeft = Math.random() > 0.5;
+      const initialTarget = getNewTarget();
+      return {
+        id: i + 1,
+        x: fromLeft ? -20 - Math.random() * 20 : 120 + Math.random() * 20,
+        y: 10 + Math.random() * 70,
+        targetX: initialTarget.x,
+        targetY: initialTarget.y,
+        speed: 0.28 + Math.random() * 0.2,
+        isSitting: false,
+        sitTimer: 0,
+        wingUp: false,
+        isGliding: false,
+        glideTimer: 0,
+        scale: 0.8 + Math.random() * 0.4, // 0.8 to 1.2 scale
+        color: birdColors[Math.floor(Math.random() * birdColors.length)],
+        chirpSymbol: notes[Math.floor(Math.random() * notes.length)]
+      };
+    });
+  });
+
+  const [activeChirpBirdId, setActiveChirpBirdId] = useState<number | null>(null);
+  const birdsRef = useRef<any[]>([]);
+
+  useEffect(() => {
+    birdsRef.current = birds;
+  }, [birds]);
+
+  const triggerChirpChain = (startBirdId?: number) => {
+    const currentBirds = birdsRef.current;
+    const sittingBirds = currentBirds.filter(b => b.isSitting);
+    if (sittingBirds.length === 0) return;
+
+    let orderedBirds = [...sittingBirds];
+    if (startBirdId !== undefined) {
+      const clicked = sittingBirds.find(b => b.id === startBirdId);
+      if (clicked) {
+        orderedBirds = [clicked, ...sittingBirds.filter(b => b.id !== startBirdId)];
+      }
+    }
+
+    let chainIndex = 0;
+    const runChain = () => {
+      const latestBirds = birdsRef.current;
+      if (chainIndex < orderedBirds.length) {
+        const targetBird = latestBirds.find(b => b.id === orderedBirds[chainIndex].id);
+        if (targetBird && targetBird.isSitting) {
+          setActiveChirpBirdId(targetBird.id);
+        }
+        chainIndex++;
+        setTimeout(runChain, 600); // 600ms rhythmic cascade
+      } else {
+        setActiveChirpBirdId(null);
+      }
+    };
+    runChain();
+  };
+
+  // Automatic rhythmic chirp chain reaction every 6.5 seconds
+  useEffect(() => {
+    const autoChirpInterval = setInterval(() => {
+      triggerChirpChain();
+    }, 6500);
+    return () => clearInterval(autoChirpInterval);
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setBirds(prevBirds =>
+        prevBirds.map(bird => {
+          if (bird.isSitting) {
+            const nextTimer = bird.sitTimer - 0.05;
+            if (nextTimer <= 0) {
+              const flyOffRight = Math.random() > 0.5;
+              const nextTarget = getNewTarget();
+              return {
+                ...bird,
+                isSitting: false,
+                sitTimer: 0,
+                targetX: flyOffRight ? 125 : -25,
+                targetY: 10 + Math.random() * 80,
+                speed: 0.25 + Math.random() * 0.25,
+                isGliding: false,
+                glideTimer: 0
+              };
+            }
+            
+            const shouldChangeNote = Math.random() > 0.94;
+            return { 
+              ...bird, 
+              sitTimer: nextTimer,
+              chirpSymbol: shouldChangeNote ? notes[Math.floor(Math.random() * notes.length)] : bird.chirpSymbol
+            };
+          } else {
+            const dx = bird.targetX - bird.x;
+            const dy = bird.targetY - bird.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            if (dist < 2.0) {
+              // Increased sit probability (0.05 instead of 0.35 threshold) - lands much more frequently!
+              const shouldSit = Math.random() > 0.05 && bird.targetX >= 5 && bird.targetX <= 95;
+              if (shouldSit) {
+                return {
+                  ...bird,
+                  x: bird.targetX,
+                  y: bird.targetY,
+                  isSitting: true,
+                  sitTimer: 6 + Math.random() * 15,
+                };
+              } else {
+                const offscreen = Math.random() > 0.7;
+                const nextTarget = getNewTarget();
+                return {
+                  ...bird,
+                  targetX: offscreen ? (Math.random() > 0.5 ? 125 : -25) : nextTarget.x,
+                  targetY: offscreen ? (10 + Math.random() * 70) : nextTarget.y,
+                  speed: 0.25 + Math.random() * 0.25,
+                  isGliding: false,
+                  glideTimer: 0
+                };
+              }
+            }
+
+            let nextIsGliding = bird.isGliding;
+            let nextGlideTimer = bird.glideTimer - 0.05;
+            if (nextGlideTimer <= 0) {
+              nextIsGliding = Math.random() > 0.85;
+              nextGlideTimer = 1 + Math.random() * 3;
+            }
+
+            const moveX = (dx / dist) * bird.speed;
+            const moveY = (dy / dist) * bird.speed;
+            
+            return {
+              ...bird,
+              x: bird.x + moveX,
+              y: bird.y + moveY,
+              isGliding: nextIsGliding,
+              glideTimer: nextGlideTimer,
+              wingUp: nextIsGliding ? false : !bird.wingUp
+            };
+          }
+        })
+      );
+    }, 50);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
+      {birds.map(bird => {
+        const isFacingLeft = bird.targetX < bird.x;
+        const isChirpingInChain = activeChirpBirdId === bird.id;
+        return (
+          <div
+            key={bird.id}
+            className="absolute transition-transform duration-75 pointer-events-auto cursor-pointer"
+            style={{
+              left: `${bird.x}%`,
+              top: `${bird.y}%`,
+              transform: `translate(-50%, -50%) scale(${bird.scale}) scaleX(${isFacingLeft ? -1 : 1})`,
+            }}
+            onClick={() => {
+              if (bird.isSitting) {
+                triggerChirpChain(bird.id);
+              }
+            }}
+            title={bird.isSitting ? "Click bird to trigger chain reaction chirp!" : "Flying bird"}
+          >
+            <svg width="32" height="32" viewBox="0 0 32 32" className="drop-shadow-lg">
+              <path d="M 6 16 L 0 13 L 0 19 Z" fill={bird.color} />
+              <ellipse cx="14" cy="16" rx="9" ry="5.5" fill={bird.color} />
+              <polygon points="25,14 29,15 25,17" fill="#F4B400" />
+              <circle cx="21" cy="14.5" r="5" fill={bird.color} />
+              <circle cx="23" cy="13.5" r="1.2" fill="#FFFFFF" />
+              
+              {bird.isSitting ? (
+                <>
+                  <path d="M 11 16 C 11 13, 16 13, 17 16 C 16 19, 11 19, 11 16" fill="#1C1C1C" opacity="0.2" />
+                  
+                  {/* Bouncing chirp notes */}
+                  {(bird.sitTimer % 1.5 < 0.4 || isChirpingInChain) && (
+                    <g className="animate-bounce">
+                      <text 
+                        x="24" 
+                        y="6" 
+                        fontSize={isChirpingInChain ? "14" : "11"} 
+                        fill={isChirpingInChain ? "#FFD700" : bird.color} 
+                        className={`font-mono font-bold ${isChirpingInChain ? "scale-125 origin-bottom transition-transform" : ""}`}
+                        style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}
+                      >
+                        {bird.chirpSymbol}
+                      </text>
+                      {isChirpingInChain && (
+                        <>
+                          <text x="32" y="-2" fontSize="10" fill="#D95D39" className="font-mono font-bold">♪</text>
+                          <text x="16" y="2" fontSize="9" fill="#F7A072" className="font-mono font-bold">♫</text>
+                        </>
+                      )}
+                    </g>
+                  )}
+                  
+                  {/* Ripple pulse visual on the bird in active chirp sequence */}
+                  {isChirpingInChain && (
+                    <circle 
+                      cx="14" 
+                      cy="16" 
+                      r="11" 
+                      fill="none" 
+                      stroke={bird.color} 
+                      strokeWidth="1.5" 
+                      className="animate-ping opacity-75" 
+                      style={{ transformOrigin: '14px 16px' }} 
+                    />
+                  )}
+                </>
+              ) : (
+                <path
+                  d="M 14 16 L 10 6 L 16 12 Z"
+                  fill={bird.color}
+                  style={{
+                    transformOrigin: '14px 16px',
+                    transform: bird.wingUp ? 'scaleY(1)' : 'scaleY(-0.5)',
+                    transition: 'transform 0.05s linear'
+                  }}
+                />
+              )}
+            </svg>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const StormAtmosphere = ({ intensity = 0.5 }: { intensity?: number }) => {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [lightningFlash, setLightningFlash] = useState(false);
+  
+  const [clouds] = useState(() => 
+    Array.from({ length: 4 }).map((_, i) => ({
+      id: i,
+      size: 140 + Math.random() * 160,
+      top: 2 + Math.random() * 15,
+      left: Math.random() * 80,
+      opacity: 0.15 + Math.random() * 0.2,
+      duration: 30 + Math.random() * 30,
+      direction: Math.random() > 0.5 ? 1 : -1,
+      color: Math.random() > 0.5 ? 'text-neutral-700' : 'text-neutral-800'
+    }))
+  );
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animationId: number;
+    let width = canvas.width = canvas.offsetWidth;
+    let height = canvas.height = canvas.offsetHeight;
+
+    const handleResize = () => {
+      if (!canvas) return;
+      width = canvas.width = canvas.offsetWidth;
+      height = canvas.height = canvas.offsetHeight;
+    };
+    window.addEventListener('resize', handleResize);
+
+    // Dynamic Rain Count based on Storm Intensity: Drizzle (low) vs Monsoon (high)
+    const rainCount = 40 + Math.floor(intensity * 180); // 58 at 0.1, 220 at 1.0
+    const raindrops: Array<{
+      x: number;
+      y: number;
+      length: number;
+      speed: number;
+      opacity: number;
+      wind: number;
+    }> = [];
+
+    for (let i = 0; i < rainCount; i++) {
+      // Scale length and speed based on intensity for drizzle (gentle) vs monsoon (torrential)
+      const baseLength = 8 + Math.random() * 15;
+      const baseSpeed = 6 + Math.random() * 5;
+      
+      raindrops.push({
+        x: Math.random() * width,
+        y: Math.random() * height - height,
+        length: baseLength * (0.6 + intensity * 0.8),
+        speed: baseSpeed * (0.6 + intensity * 0.8),
+        opacity: (0.12 + Math.random() * 0.3) * (0.5 + intensity * 0.5),
+        wind: (-1.0 - Math.random() * 1.5) * (0.7 + intensity * 0.6)
+      });
+    }
+
+    const splashes: Array<{
+      x: number;
+      y: number;
+      radius: number;
+      maxRadius: number;
+      opacity: number;
+      speed: number;
+    }> = [];
+
+    let lightningTimer: any;
+    let activeBoltPath: Array<{ x1: number; y1: number; x2: number; y2: number }> | null = null;
+    let boltOpacity = 0;
+
+    const createLightningBolt = (startX: number, startY: number, length: number, angle: number, depth: number) => {
+      const path: Array<{ x1: number; y1: number; x2: number; y2: number }> = [];
+      if (depth > 4) return path;
+
+      const endX = startX + length * Math.sin(angle);
+      const endY = startY + length * Math.cos(angle);
+      path.push({ x1: startX, y1: startY, x2: endX, y2: endY });
+
+      const branches = Math.floor(Math.random() * 2) + 1;
+      for (let i = 0; i < branches; i++) {
+        const nextAngle = angle + (Math.random() - 0.5) * 0.7;
+        const nextLength = length * (0.6 + Math.random() * 0.3);
+        const subPath = createLightningBolt(endX, endY, nextLength, nextAngle, depth + 1);
+        path.push(...subPath);
+      }
+      return path;
+    };
+
+    const triggerStrike = () => {
+      const strikeX = Math.random() * width;
+      activeBoltPath = createLightningBolt(strikeX, 0, 45 + Math.random() * 30, 0, 0);
+      boltOpacity = 1;
+
+      // Heavy flashes in monsoon, subtle soft flashes in drizzle
+      setLightningFlash(true);
+      setTimeout(() => setLightningFlash(false), 80);
+      
+      if (intensity > 0.4) {
+        setTimeout(() => {
+          setLightningFlash(true);
+          boltOpacity = 0.9;
+        }, 150);
+        setTimeout(() => {
+          setLightningFlash(false);
+          activeBoltPath = null;
+          boltOpacity = 0;
+        }, 300);
+      } else {
+        setTimeout(() => {
+          activeBoltPath = null;
+          boltOpacity = 0;
+        }, 180);
+      }
+
+      // Lightning strike frequency depends directly on storm intensity:
+      // High intensity (Monsoon): lightning every 2.5s-6s
+      // Low intensity (Drizzle): lightning every 14s-26s
+      const nextInterval = (14000 - intensity * 12000) + Math.random() * (16000 - intensity * 12000);
+      lightningTimer = setTimeout(triggerStrike, Math.max(2000, nextInterval));
+    };
+
+    const firstInterval = (10000 - intensity * 8000) + Math.random() * 5000;
+    lightningTimer = setTimeout(triggerStrike, Math.max(1500, firstInterval));
+
+    const animate = () => {
+      ctx.clearRect(0, 0, width, height);
+
+      if (activeBoltPath && boltOpacity > 0) {
+        ctx.strokeStyle = `rgba(232, 240, 254, ${boltOpacity * (0.4 + intensity * 0.6)})`;
+        ctx.shadowColor = 'rgba(232, 240, 254, 0.9)';
+        ctx.shadowBlur = 15;
+        ctx.lineWidth = 1.5 + intensity * 2;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        activeBoltPath.forEach(seg => {
+          ctx.moveTo(seg.x1, seg.y1);
+          ctx.lineTo(seg.x2, seg.y2);
+        });
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        boltOpacity -= 0.04;
+      }
+
+      ctx.lineWidth = 0.8 + intensity * 0.6;
+      raindrops.forEach(drop => {
+        ctx.strokeStyle = `rgba(156, 163, 175, ${drop.opacity})`;
+        ctx.beginPath();
+        ctx.moveTo(drop.x, drop.y);
+        ctx.lineTo(drop.x + drop.wind, drop.y + drop.length);
+        ctx.stroke();
+
+        drop.y += drop.speed;
+        drop.x += drop.wind;
+
+        if (drop.y > height) {
+          if (Math.random() > 0.4) {
+            splashes.push({
+              x: drop.x,
+              y: height - 2,
+              radius: 1,
+              maxRadius: (2 + Math.random() * 3) * (0.6 + intensity * 0.6),
+              opacity: drop.opacity * 0.8,
+              speed: 0.15 + Math.random() * 0.15
+            });
+          }
+          drop.y = -drop.length;
+          drop.x = Math.random() * width;
+        }
+      });
+
+      for (let i = splashes.length - 1; i >= 0; i--) {
+        const splash = splashes[i];
+        ctx.strokeStyle = `rgba(156, 163, 175, ${splash.opacity})`;
+        ctx.beginPath();
+        ctx.arc(splash.x, splash.y, splash.radius, 0, Math.PI, true);
+        ctx.stroke();
+
+        splash.radius += splash.speed;
+        splash.opacity -= 0.03;
+
+        if (splash.opacity <= 0 || splash.radius >= splash.maxRadius) {
+          splashes.splice(i, 1);
+        }
+      }
+
+      animationId = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      cancelAnimationFrame(animationId);
+      clearTimeout(lightningTimer);
+    };
+  }, [intensity]);
+
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden z-10 transition-colors duration-150"
+         style={{ backgroundColor: lightningFlash ? `rgba(255, 255, 255, ${0.05 + intensity * 0.1})` : 'transparent' }}>
+      
+      {clouds.map(cloud => (
+        <div
+          key={cloud.id}
+          className="absolute opacity-30 pointer-events-none"
+          style={{
+            top: `${cloud.top}%`,
+            left: `${cloud.left}%`,
+            animation: `cloudDrift ${cloud.duration}s infinite ease-in-out ${cloud.direction < 0 ? 'reverse' : 'normal'}`,
+            opacity: cloud.opacity * (0.4 + intensity * 0.6) // Thicker/darker clouds during heavy monsoon storms
+          }}
+        >
+          <svg width={cloud.size} height={cloud.size / 2} viewBox="0 0 240 120" fill="currentColor" className={cloud.color}>
+            <path d="M 50 100 C 20 100 0 80 0 50 C 0 20 30 10 50 20 C 60 5 90 0 120 10 C 150 0 180 15 190 35 C 220 30 240 50 240 75 C 240 100 210 110 190 100 Z" />
+          </svg>
+        </div>
+      ))}
+
+      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+
+      <style>{`
+        @keyframes cloudDrift {
+          0%, 100% { transform: translateY(0px) translateX(0px); }
+          50% { transform: translateY(-10px) translateX(30px); }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+const validateLrc = (text: string): { isValid: boolean; error?: string } => {
+  if (!text.trim()) {
+    return { isValid: true };
+  }
+  const lines = text.split('\n');
+  let hasTimestampLine = false;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    
+    if (line.startsWith('[') && line.includes(']')) {
+      const closingBracketIndex = line.indexOf(']');
+      const contentInside = line.substring(1, closingBracketIndex).trim();
+      
+      const isTimestamp = /^\d{1,3}:\d{2}(?:\.\d{1,3})?$/.test(contentInside) || /^\d{1,2}:\d{2}:\d{2}(?:\.\d{1,3})?$/.test(contentInside);
+      if (isTimestamp) {
+        hasTimestampLine = true;
+      } else {
+        const isMetadata = /^[a-zA-Z]{2,6}:/.test(contentInside);
+        if (!isMetadata) {
+          return {
+            isValid: false,
+            error: `Line ${i + 1} has an invalid tag/timestamp: "${line}". Timestamps must be inside brackets like [mm:ss] or [mm:ss.xx].`
+          };
+        }
+      }
+    } else {
+      return {
+        isValid: false,
+        error: `Line ${i + 1} is missing a timestamp: "${line}". Each lyric line must start with a valid timestamp, e.g. [00:15] Lyric text.`
+      };
+    }
+  }
+  
+  if (!hasTimestampLine) {
+    return {
+      isValid: false,
+      error: "The lyrics must contain at least one valid synchronized timestamp, e.g. [00:15] My Lyric line."
+    };
+  }
+  
+  return { isValid: true };
+};
+
 export default function App() {
   // --- USER AUTHENTICATION STATE ---
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
@@ -266,12 +879,57 @@ export default function App() {
   const [musicType, setMusicType] = useState<'none' | 'synth' | 'local'>('none');
   const [synthType, setSynthType] = useState<'rain' | 'drone' | 'chimes'>('rain');
   const [localFileName, setLocalFileName] = useState('');
-  const [uploadedTracks, setUploadedTracks] = useState<{ name: string; url: string }[]>([]);
+  const [uploadedTracks, setUploadedTracks] = useState<{ name: string; url: string; playlist?: string }[]>([]);
   const [currentTrackIndex, setCurrentTrackIndex] = useState<number>(0);
   const [musicVolume, setMusicVolume] = useState(0.5);
   const [isLoopingMusic, setIsLoopingMusic] = useState(false);
   const [songCurrentTime, setSongCurrentTime] = useState(0);
   const [songDuration, setSongDuration] = useState(0);
+
+  // --- LYRICS & ATMOSPHERE STATES ---
+  const [showLyrics, setShowLyrics] = useState(false);
+  const [isEditingLyrics, setIsEditingLyrics] = useState(false);
+  const [lyricsEditorText, setLyricsEditorText] = useState('');
+  const [lyricsValidationError, setLyricsValidationError] = useState<string | null>(null);
+  const [lyricsSyncOffset, setLyricsSyncOffset] = useState<number>(0);
+  const [selectedPlaylist, setSelectedPlaylist] = useState<string>('All');
+  const [stormIntensity, setStormIntensity] = useState<number>(() => {
+    try {
+      return parseFloat(localStorage.getItem('focus_storm_intensity') || '0.5');
+    } catch (e) {
+      return 0.5;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('focus_storm_intensity', stormIntensity.toString());
+  }, [stormIntensity]);
+
+  const getFilteredTracks = (): { name: string; url: string; playlist?: string }[] => {
+    if (uploadedTracks.length === 0) return [];
+    if (selectedPlaylist === 'All') return uploadedTracks;
+    return uploadedTracks.filter(t => (t.playlist || 'Default') === selectedPlaylist);
+  };
+
+  const [trackLyrics, setTrackLyrics] = useState<Record<string, string>>(() => {
+    try {
+      const saved = localStorage.getItem('focus_track_lyrics');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+  const [immersiveAtmosphere, setImmersiveAtmosphere] = useState<'none' | 'birds' | 'storm'>(() => {
+    try {
+      return (localStorage.getItem('immersive_atmosphere') as any) || 'none';
+    } catch (e) {
+      return 'none';
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('immersive_atmosphere', immersiveAtmosphere);
+  }, [immersiveAtmosphere]);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const synthNodesRef = useRef<any[]>([]);
@@ -647,6 +1305,164 @@ export default function App() {
     };
   }, [uploadedTracks, currentTrackIndex]);
 
+  // Butter-smooth 60fps progress update loop
+  useEffect(() => {
+    let rAFId: number;
+    const updateSmoothTime = () => {
+      const audio = localAudioRef.current;
+      if (audio && isPlayingMusic && !audio.paused) {
+        setSongCurrentTime(audio.currentTime);
+      }
+      rAFId = requestAnimationFrame(updateSmoothTime);
+    };
+    if (isPlayingMusic) {
+      rAFId = requestAnimationFrame(updateSmoothTime);
+    }
+    return () => {
+      cancelAnimationFrame(rAFId);
+    };
+  }, [isPlayingMusic]);
+
+  // --- LYRICS PARSING & SYNCHRONIZATION HELPERS ---
+  const getCleanBaseName = (filename: string): string => {
+    return filename
+      .replace(/\.(mp3|wav|ogg|m4a|aac|flac|lrc)$/gi, '')
+      .replace(/\s*[\(\[][^\)\]]*[\)\]]\s*/g, '') // Remove (Official Audio), [Lyrics], etc.
+      .replace(/[^a-zA-Z0-9]/g, '') // Strip spaces and punctuation
+      .trim()
+      .toLowerCase();
+  };
+
+  const parseLyrics = (rawText: string, duration: number): { time: number; text: string }[] => {
+    const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
+    const timeRegex = /^\[(\d{2}):(\d{2})(?:\.(\d{2,3}))?\](.*)/;
+    
+    const parsed: { time: number; text: string }[] = [];
+    let hasTimestamps = false;
+    
+    for (const line of lines) {
+      const match = line.match(timeRegex);
+      if (match) {
+        hasTimestamps = true;
+        const min = parseInt(match[1], 10);
+        const sec = parseInt(match[2], 10);
+        const ms = match[3] ? parseInt(match[3], 10) / (match[3].length === 2 ? 100 : 1000) : 0;
+        const time = min * 60 + sec + ms;
+        const text = match[4].trim();
+        parsed.push({ time, text });
+      }
+    }
+    
+    if (hasTimestamps) {
+      return parsed.sort((a, b) => a.time - b.time);
+    }
+    
+    // No timestamps: divide text evenly over track duration
+    const activeDuration = duration || 180;
+    const interval = activeDuration / Math.max(lines.length, 1);
+    return lines.map((line, index) => ({
+      time: index * interval,
+      text: line
+    }));
+  };
+
+  const getDefaultLyricsForTrack = (trackName: string): string => {
+    return `[00:00.00] Welcome to your focus session with ${trackName}...
+[00:08.00] Let the sound wave ground your thoughts.
+[00:16.00] Breathe in deeply, expanding your awareness...
+[00:24.00] Breathe out slowly, letting go of any strain.
+[00:32.00] Your mind is perfectly capable of amazing depth.
+[00:40.00] In this moment, you are fully present.
+[00:48.00] Let everything else drift away into the background.
+[00:56.00] Feel the clarity of a distraction-free mind.
+[01:04.00] One step at a time, one breath at a time.
+[01:12.00] You are doing incredible work. Keep going.
+[01:25.00] Maintain your gentle attention.
+[01:40.00] Focus is not forced; it is allowed to settle.
+[01:55.00] Enjoy the peaceful rhythm of creation...`;
+  };
+
+  const getLyricsForCurrentTrack = (): string => {
+    const currentTrack = uploadedTracks[currentTrackIndex];
+    if (musicType === 'local' && currentTrack) {
+      if (trackLyrics[currentTrack.name]) {
+        return trackLyrics[currentTrack.name];
+      }
+      // Scan keys for matching file base names (auto-detection when track played)
+      const currentBase = getCleanBaseName(currentTrack.name);
+      const matchedKey = Object.keys(trackLyrics).find(key => getCleanBaseName(key) === currentBase);
+      if (matchedKey) {
+        return trackLyrics[matchedKey];
+      }
+      return "";
+    }
+    if (musicType === 'synth') {
+      if (synthType === 'rain') {
+        return `[00:00] Rain falls softly, washing away distractions.
+[00:15] Listen to the quiet patter of drops.
+[00:30] Your mind is calm and clear like a fresh lake.
+[00:45] Breathe in the clean petrichor of focus.
+[01:00] Let the steady rhythm of rain carry you deeper.
+[01:15] Deep peace of the forest settles within you.
+[01:30] Focus flows as naturally as water.
+[01:45] The outside world fades, only this moment remains.
+[02:00] Relaxed, sharp, and perfectly centered.`;
+      }
+      if (synthType === 'drone') {
+        return `[00:00] A steady vibration of deep consciousness.
+[00:15] Enter the flow state.
+[00:30] No thoughts, only presence.
+[00:45] Immerse in the absolute depth of this moment.
+[01:00] The steady frequency anchors your mind.
+[01:15] Clarity arises from silence.
+[01:30] Letting go of all resistance.
+[01:45] Your intelligence is quiet, focused, and powerful.
+[02:00] Absolute alignment of intent and effort.`;
+      }
+      if (synthType === 'chimes') {
+        return `[00:00] Clear, sparkling tones of instant clarity.
+[00:15] A gentle breeze of mindful awareness.
+[00:30] Let each bell ring awaken your concentration.
+[00:45] Light, weightless, and effortless focus.
+[01:00] Vibrations of peace resonate through your workspace.
+[01:15] Thoughts dissolve into pure awareness.
+[01:30] Gentle clarity, shining like a morning star.
+[01:45] Feel the space around you become completely calm.
+[02:00] In harmony with your purpose.`;
+      }
+    }
+    return "[00:00] Welcome to the Focus Sanctuary. Meditate, breathe, and focus.";
+  };
+
+  const getActiveLyricLine = (rawLyrics: string, time: number, duration: number): { current: string; next: string; index: number; progress: number } => {
+    const parsed = parseLyrics(rawLyrics, duration);
+    if (parsed.length === 0) return { current: "", next: "", index: -1, progress: 0 };
+    
+    // Apply offset to playback time
+    const adjustedTime = Math.max(0, time + lyricsSyncOffset);
+    
+    let activeIdx = 0;
+    for (let i = 0; i < parsed.length; i++) {
+      if (adjustedTime >= parsed[i].time) {
+        activeIdx = i;
+      } else {
+        break;
+      }
+    }
+    
+    const lineStart = parsed[activeIdx]?.time || 0;
+    const lineEnd = parsed[activeIdx + 1] ? parsed[activeIdx + 1].time : (duration || (lineStart + 5));
+    const lineDuration = lineEnd - lineStart;
+    const progress = lineDuration > 0 ? Math.min(1, Math.max(0, (adjustedTime - lineStart) / lineDuration)) : 1;
+    
+    return {
+      current: parsed[activeIdx]?.text || "",
+      next: parsed[activeIdx + 1]?.text || "",
+      index: activeIdx,
+      progress
+    };
+  };
+
   // --- AUDIO SYNTHESIZER ---
   const getAudioContext = (): AudioContext => {
     if (!audioCtxRef.current) {
@@ -801,48 +1617,101 @@ export default function App() {
   };
 
   const handleNextTrack = () => {
-    if (uploadedTracks.length === 0) return;
-    const nextIndex = (currentTrackIndex + 1) % uploadedTracks.length;
+    const tracks = getFilteredTracks();
+    if (tracks.length === 0) return;
+    const nextIndex = (currentTrackIndex + 1) % tracks.length;
     setCurrentTrackIndex(nextIndex);
     if (localAudioRef.current) {
-      localAudioRef.current.src = uploadedTracks[nextIndex].url;
+      localAudioRef.current.src = tracks[nextIndex].url;
       localAudioRef.current.volume = musicVolume;
       if (isPlayingMusic) {
         localAudioRef.current.play().catch(err => console.log("Failed autoplay:", err));
       }
     }
-    addLog(`Skipped to next track: ${uploadedTracks[nextIndex].name}`);
+    addLog(`Skipped to next track: ${tracks[nextIndex].name}`);
   };
 
   const handlePrevTrack = () => {
-    if (uploadedTracks.length === 0) return;
-    const prevIndex = (currentTrackIndex - 1 + uploadedTracks.length) % uploadedTracks.length;
+    const tracks = getFilteredTracks();
+    if (tracks.length === 0) return;
+    const prevIndex = (currentTrackIndex - 1 + tracks.length) % tracks.length;
     setCurrentTrackIndex(prevIndex);
     if (localAudioRef.current) {
-      localAudioRef.current.src = uploadedTracks[prevIndex].url;
+      localAudioRef.current.src = tracks[prevIndex].url;
       localAudioRef.current.volume = musicVolume;
       if (isPlayingMusic) {
         localAudioRef.current.play().catch(err => console.log("Failed autoplay:", err));
       }
     }
-    addLog(`Skipped to previous track: ${uploadedTracks[prevIndex].name}`);
+    addLog(`Skipped to previous track: ${tracks[prevIndex].name}`);
   };
 
   const handleMusicUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const newTracks: { name: string; url: string }[] = [];
+    const newTracks: { name: string; url: string; playlist?: string }[] = [];
+    const lrcFiles: File[] = [];
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      if (file.type.startsWith('audio/') || file.name.endsWith('.mp3') || file.name.endsWith('.wav') || file.name.endsWith('.ogg') || file.name.endsWith('.m4a')) {
+      const nameLower = file.name.toLowerCase();
+      
+      // Determine playlist category from folder structure
+      let playlistCategory = 'Default';
+      const relPath = (file as any).webkitRelativePath;
+      if (relPath) {
+        const pathParts = relPath.split('/');
+        if (pathParts.length > 1) {
+          playlistCategory = pathParts[pathParts.length - 2]; // Nearest folder name represents the album/playlist
+        }
+      }
+
+      if (nameLower.endsWith('.lrc')) {
+        lrcFiles.push(file);
+      } else if (
+        file.type.startsWith('audio/') || 
+        nameLower.endsWith('.mp3') || 
+        nameLower.endsWith('.wav') || 
+        nameLower.endsWith('.ogg') || 
+        nameLower.endsWith('.m4a') ||
+        nameLower.endsWith('.aac') ||
+        nameLower.endsWith('.flac')
+      ) {
         const url = URL.createObjectURL(file);
         newTracks.push({
           name: file.name,
-          url: url
+          url: url,
+          playlist: playlistCategory
         });
       }
     }
+
+    // Parse LRC files
+    lrcFiles.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = event.target?.result as string;
+        if (text) {
+          const lrcBase = getCleanBaseName(file.name);
+          
+          // Match newly uploaded tracks
+          const matchedNew = newTracks.find(t => getCleanBaseName(t.name) === lrcBase);
+          // Match existing tracks
+          const matchedExisting = uploadedTracks.find(t => getCleanBaseName(t.name) === lrcBase);
+          
+          const targetKey = matchedNew?.name || matchedExisting?.name || file.name;
+          
+          setTrackLyrics(prev => {
+            const updated = { ...prev, [targetKey]: text };
+            localStorage.setItem('focus_track_lyrics', JSON.stringify(updated));
+            return updated;
+          });
+          addLog(`Automatically detected and loaded synced lyrics for: ${targetKey}`);
+        }
+      };
+      reader.readAsText(file);
+    });
 
     if (newTracks.length > 0) {
       const existingCount = uploadedTracks.length;
@@ -860,6 +1729,8 @@ export default function App() {
           localAudioRef.current.play().catch(err => console.log("Failed autoplay:", err));
         }
       }
+    } else if (lrcFiles.length > 0) {
+      addLog(`Loaded ${lrcFiles.length} lyrics (.lrc) file(s).`);
     }
   };
 
@@ -876,13 +1747,14 @@ export default function App() {
     const audio = localAudioRef.current;
     if (!audio) return;
     const handleEnded = () => {
-      if (uploadedTracks.length > 1) {
-        const nextIndex = (currentTrackIndex + 1) % uploadedTracks.length;
+      const tracks = getFilteredTracks();
+      if (tracks.length > 1) {
+        const nextIndex = (currentTrackIndex + 1) % tracks.length;
         setCurrentTrackIndex(nextIndex);
-        audio.src = uploadedTracks[nextIndex].url;
+        audio.src = tracks[nextIndex].url;
         audio.volume = musicVolume;
         audio.play().catch(v => console.log("Playlist autoplay failed:", v));
-        addLog(`Autoplaying next track: ${uploadedTracks[nextIndex].name}`);
+        addLog(`Autoplaying next track: ${tracks[nextIndex].name}`);
       } else {
         setIsPlayingMusic(false);
       }
@@ -891,7 +1763,7 @@ export default function App() {
     return () => {
       audio.removeEventListener('ended', handleEnded);
     };
-  }, [uploadedTracks, currentTrackIndex, musicVolume]);
+  }, [uploadedTracks, currentTrackIndex, musicVolume, selectedPlaylist]);
 
   const playZenChime = () => {
     try {
@@ -2192,14 +3064,51 @@ export default function App() {
       {isFullscreenFocus && (
         <div className={`fixed inset-0 z-50 flex flex-col justify-between p-6 sm:p-12 animate-fade-in ${activeTheme.bg} ${activeTheme.text} ${activeTheme.font}`}>
           
+          {/* Active Ambient Atmosphere Backdrops (pointer-events-none, absolute behind overlays) */}
+          {immersiveAtmosphere === 'birds' && <BirdAtmosphere />}
+          {immersiveAtmosphere === 'storm' && <StormAtmosphere intensity={stormIntensity} />}
+          
           {/* Top Row: Minimal Toggle, Status, Exit */}
-          <div className={`flex justify-between items-center border-b pb-4 ${darkMode ? 'border-neutral-800' : 'border-neutral-200'}`}>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b pb-4 gap-3 z-30">
             <div className="flex items-center gap-3">
               <span className="w-2.5 h-2.5 rounded-full bg-[#D95D39] animate-pulse"></span>
               <span className="text-[10px] tracking-widest uppercase opacity-70">Focus Chamber Active</span>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-4">
+              {/* Dynamic Atmosphere Selection Dropdown */}
+              <div className={`flex items-center gap-1.5 border px-2.5 py-1 rounded-md text-[10px] font-mono shadow-sm bg-neutral-500/5 ${darkMode ? 'border-neutral-800 text-gray-300' : 'border-neutral-200 text-gray-700'}`}>
+                <span className="opacity-60 text-[9px] uppercase tracking-wider">Atmosphere:</span>
+                <select
+                  value={immersiveAtmosphere}
+                  onChange={(e) => setImmersiveAtmosphere(e.target.value as any)}
+                  className="bg-transparent border-none outline-none cursor-pointer font-bold text-[#D95D39] focus:ring-0"
+                >
+                  <option value="none" className={darkMode ? 'bg-neutral-950 text-white' : 'bg-white text-black'}>Pure Focus</option>
+                  <option value="birds" className={darkMode ? 'bg-neutral-950 text-white' : 'bg-white text-black'}>🐦 Bird Haven</option>
+                  <option value="storm" className={darkMode ? 'bg-neutral-950 text-white' : 'bg-white text-black'}>⛈️ Stormy Sky</option>
+                </select>
+              </div>
+
+              {/* Storm Intensity slider control */}
+              {immersiveAtmosphere === 'storm' && (
+                <div className={`flex items-center gap-2 border px-2.5 py-1 rounded-md text-[10px] font-mono shadow-sm bg-neutral-500/5 ${darkMode ? 'border-neutral-800 text-gray-300' : 'border-neutral-200 text-gray-700'}`}>
+                  <span className="opacity-60 text-[9px] uppercase tracking-wider">Intensity:</span>
+                  <input
+                    type="range"
+                    min="0.1"
+                    max="1.0"
+                    step="0.1"
+                    value={stormIntensity}
+                    onChange={(e) => setStormIntensity(parseFloat(e.target.value))}
+                    className="w-20 h-1 bg-neutral-500/20 rounded-lg appearance-none cursor-pointer accent-[#D95D39]"
+                  />
+                  <span className="font-bold text-[#D95D39]">
+                    {stormIntensity <= 0.3 ? 'Drizzle' : stormIntensity <= 0.7 ? 'Moderate' : 'Monsoon'}
+                  </span>
+                </div>
+              )}
+
               {/* Minimalist View Toggle */}
               <button
                 onClick={() => setIsImmersiveMinimal(!isImmersiveMinimal)}
@@ -2661,11 +3570,46 @@ export default function App() {
                   <span className="text-[10px] uppercase tracking-widest text-[#D95D39] block mb-2 font-mono font-bold flex items-center gap-1.5">
                     <Music size={12} /> Ambient Audio Player
                   </span>
+
+                  {/* Playlist Categories Toggle */}
+                  {(() => {
+                    const playlists = ['All', ...Array.from(new Set(uploadedTracks.map(t => t.playlist || 'Default'))).filter(Boolean)];
+                    if (playlists.length > 2) {
+                      return (
+                        <div className="flex flex-wrap gap-1 mb-2 pb-2 border-b border-dashed border-neutral-500/10">
+                          {playlists.map(p => (
+                            <button
+                              key={p}
+                              onClick={() => {
+                                setSelectedPlaylist(p);
+                                setCurrentTrackIndex(0);
+                                const filtered = p === 'All' ? uploadedTracks : uploadedTracks.filter(t => (t.playlist || 'Default') === p);
+                                if (filtered.length > 0 && localAudioRef.current) {
+                                  localAudioRef.current.src = filtered[0].url;
+                                  if (isPlayingMusic) {
+                                    localAudioRef.current.play().catch(e => console.log(e));
+                                  }
+                                }
+                              }}
+                              className={`px-1.5 py-0.5 rounded text-[8px] font-mono tracking-wide uppercase transition-all cursor-pointer ${
+                                selectedPlaylist === p
+                                  ? 'bg-[#D95D39] text-white font-bold'
+                                  : 'bg-neutral-500/10 hover:bg-neutral-500/15 text-neutral-400'
+                              }`}
+                            >
+                              {p}
+                            </button>
+                          ))}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                   
                   <div className="mb-3 font-mono text-[10px]">
-                    {uploadedTracks.length > 0 && musicType === 'local' ? (
+                    {getFilteredTracks().length > 0 && musicType === 'local' ? (
                       <p className="truncate font-bold text-neutral-800 dark:text-neutral-200">
-                        Playing: {uploadedTracks[currentTrackIndex]?.name}
+                        Playing: {getFilteredTracks()[currentTrackIndex]?.name}
                       </p>
                     ) : (
                       <p className="truncate opacity-75">
@@ -2674,7 +3618,7 @@ export default function App() {
                     )}
                   </div>
 
-                  {musicType === 'local' && uploadedTracks.length > 0 && (
+                  {musicType === 'local' && getFilteredTracks().length > 0 && (
                     <div className="flex items-center gap-1.5 w-full text-[9px] font-mono text-neutral-400 mb-3">
                       <span>{Math.floor(songCurrentTime / 60)}:{(Math.floor(songCurrentTime % 60)).toString().padStart(2, '0')}</span>
                       <input
@@ -2693,7 +3637,7 @@ export default function App() {
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={handlePrevTrack}
-                        disabled={musicType !== 'local' || uploadedTracks.length <= 1}
+                        disabled={musicType !== 'local' || getFilteredTracks().length <= 1}
                         className={`p-1 border rounded-full disabled:opacity-30 cursor-pointer text-current ${
                           darkMode ? 'border-neutral-800 hover:bg-neutral-800' : 'border-neutral-200 hover:bg-neutral-100'
                         }`}
@@ -2713,7 +3657,7 @@ export default function App() {
 
                       <button
                         onClick={handleNextTrack}
-                        disabled={musicType !== 'local' || uploadedTracks.length <= 1}
+                        disabled={musicType !== 'local' || getFilteredTracks().length <= 1}
                         className={`p-1 border rounded-full disabled:opacity-30 cursor-pointer text-current ${
                           darkMode ? 'border-neutral-800 hover:bg-neutral-800' : 'border-neutral-200 hover:bg-neutral-100'
                         }`}
@@ -2730,6 +3674,20 @@ export default function App() {
                         title="Toggle Looping"
                       >
                         <Repeat size={10} />
+                      </button>
+
+                      {/* Lyrics Option Button */}
+                      <button
+                        onClick={() => {
+                          setShowLyrics(!showLyrics);
+                          setIsEditingLyrics(false);
+                        }}
+                        className={`p-1 border rounded-full cursor-pointer text-[9px] font-mono font-bold leading-none w-5 h-5 flex items-center justify-center transition-all ${
+                          showLyrics ? 'bg-[#D95D39] border-[#D95D39] text-white' : 'border-neutral-300 text-current hover:bg-neutral-500/10'
+                        }`}
+                        title="Toggle Synced Lyrics"
+                      >
+                        Ly
                       </button>
                     </div>
 
@@ -2751,6 +3709,146 @@ export default function App() {
                       />
                     </div>
                   </div>
+
+                  {/* Synced Lyrics Integration */}
+                  {showLyrics && (
+                    <div className={`mt-3 border border-dashed p-3 rounded-md text-center relative z-20 ${
+                      darkMode ? 'border-neutral-800 bg-neutral-900/40 text-gray-200' : 'border-gray-200 bg-gray-50/50 text-gray-800'
+                    }`}>
+                      <div className="flex justify-between items-center mb-1.5 pb-1 border-b border-dashed border-neutral-500/10">
+                        <span className="text-[8px] uppercase tracking-wider font-bold text-[#D95D39] font-mono">Synced Lyrics</span>
+                        <button
+                          onClick={() => {
+                            setLyricsValidationError(null);
+                            setIsEditingLyrics(!isEditingLyrics);
+                            setLyricsEditorText(getLyricsForCurrentTrack());
+                          }}
+                          className="text-[8px] text-neutral-400 hover:text-[#D95D39] font-mono hover:underline cursor-pointer"
+                        >
+                          {isEditingLyrics ? "Cancel" : "Edit"}
+                        </button>
+                      </div>
+                      
+                      {isEditingLyrics ? (
+                        <div className="flex flex-col gap-1.5 text-left">
+                          <textarea
+                            value={lyricsEditorText}
+                            onChange={(e) => setLyricsEditorText(e.target.value)}
+                            className={`w-full h-20 text-[9px] font-mono p-1 border rounded resize-none focus:outline-none focus:ring-1 focus:ring-[#D95D39] ${
+                              darkMode ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-white border-neutral-300 text-neutral-800'
+                            }`}
+                            placeholder="Type or paste synced lyrics here. Format: [00:15] Lyric line"
+                          />
+                          {lyricsValidationError && (
+                            <p className="text-[9px] text-red-500 font-mono bg-red-500/10 p-1 rounded border border-red-500/20 leading-snug">
+                              ⚠️ {lyricsValidationError}
+                            </p>
+                          )}
+                          <div className="flex justify-end">
+                            <button
+                              onClick={() => {
+                                const validation = validateLrc(lyricsEditorText);
+                                if (!validation.isValid) {
+                                  setLyricsValidationError(validation.error || "Malformed LRC data");
+                                  return;
+                                }
+                                setLyricsValidationError(null);
+                                const currentTrackName = musicType === 'local' && uploadedTracks[currentTrackIndex]
+                                  ? uploadedTracks[currentTrackIndex].name
+                                  : 'synth_' + synthType;
+                                const updated = { ...trackLyrics, [currentTrackName]: lyricsEditorText };
+                                setTrackLyrics(updated);
+                                localStorage.setItem('focus_track_lyrics', JSON.stringify(updated));
+                                setIsEditingLyrics(false);
+                                addLog(`Lyrics updated for: ${currentTrackName}`);
+                              }}
+                              className="px-2 py-0.5 bg-[#D95D39] text-white text-[8px] font-bold rounded hover:bg-[#c44e2e] cursor-pointer"
+                            >
+                              Save
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="py-1 flex flex-col justify-center items-center min-h-[44px] overflow-hidden">
+                          {isPlayingMusic && (musicType === 'local' || musicType === 'synth') ? (
+                            (() => {
+                              const lyricsText = getLyricsForCurrentTrack();
+                              if (!lyricsText) {
+                                return (
+                                  <div className="text-center w-full animate-fade-in">
+                                    <p className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 italic">
+                                      No synced lyrics found. Upload a matching .lrc file or click Edit.
+                                    </p>
+                                  </div>
+                                );
+                              }
+                              const activeLyric = getActiveLyricLine(lyricsText, songCurrentTime, songDuration);
+                              return (
+                                <AppleMusicLyric
+                                  current={activeLyric.current}
+                                  next={activeLyric.next}
+                                  progress={activeLyric.progress}
+                                  idx={activeLyric.index}
+                                  darkMode={darkMode}
+                                  backdrop={false}
+                                  size="sm"
+                                />
+                              );
+                            })()
+                          ) : (
+                            <p className="text-[9px] font-mono opacity-65 italic text-gray-500">
+                              Music is paused. Play music to view synced lyrics.
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Sync Offset Controls */}
+                      {!isEditingLyrics && (
+                        <div className="mt-2 pt-1.5 border-t border-dashed border-neutral-500/10 flex flex-col sm:flex-row items-center justify-between gap-1.5">
+                          <div className="flex items-center gap-1 text-[8px] font-mono text-neutral-400">
+                            <span>Sync:</span>
+                            <button
+                              onClick={() => setLyricsSyncOffset(prev => Math.max(-10, prev - 0.5))}
+                              className="px-1 py-0.2 rounded bg-neutral-500/15 hover:bg-neutral-500/25 transition-all text-[7px] cursor-pointer"
+                              title="Nudge Back 0.5s"
+                            >
+                              -0.5s
+                            </button>
+                            <span className="font-bold text-[#D95D39] min-w-[30px] text-center">
+                              {lyricsSyncOffset > 0 ? `+${lyricsSyncOffset.toFixed(1)}` : lyricsSyncOffset.toFixed(1)}s
+                            </span>
+                            <button
+                              onClick={() => setLyricsSyncOffset(prev => Math.min(10, prev + 0.5))}
+                              className="px-1 py-0.2 rounded bg-neutral-500/15 hover:bg-neutral-500/25 transition-all text-[7px] cursor-pointer"
+                              title="Nudge Forward 0.5s"
+                            >
+                              +0.5s
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                            <input
+                              type="range"
+                              min="-10"
+                              max="10"
+                              step="0.5"
+                              value={lyricsSyncOffset}
+                              onChange={(e) => setLyricsSyncOffset(parseFloat(e.target.value))}
+                              className="w-full sm:w-20 h-1 bg-neutral-500/20 rounded-lg appearance-none cursor-pointer accent-[#D95D39]"
+                            />
+                            {lyricsSyncOffset !== 0 && (
+                              <button
+                                onClick={() => setLyricsSyncOffset(0)}
+                                className="text-[7px] font-mono text-[#D95D39] hover:underline whitespace-nowrap cursor-pointer"
+                              >
+                                Reset
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -2900,6 +3998,30 @@ export default function App() {
                   <div className="font-mono font-bold text-sm opacity-75">
                     TIMER: {Math.floor(focusTimeLeft / 60).toString().padStart(2, '0')}:{(focusTimeLeft % 60).toString().padStart(2, '0')}
                   </div>
+                </div>
+              )}
+
+              {/* Synced Lyrics in Minimal View (Bottom Center) */}
+              {showLyrics && isPlayingMusic && (musicType === 'local' || musicType === 'synth') && (
+                <div className="mt-12 w-full max-w-2xl px-6 text-center animate-fade-in relative z-20">
+                  {(() => {
+                    const lyricsText = getLyricsForCurrentTrack();
+                    if (lyricsText) {
+                      const activeLyric = getActiveLyricLine(lyricsText, songCurrentTime, songDuration);
+                      return (
+                        <AppleMusicLyric
+                          current={activeLyric.current}
+                          next={activeLyric.next}
+                          progress={activeLyric.progress}
+                          idx={activeLyric.index}
+                          darkMode={darkMode}
+                          backdrop={true}
+                          size="lg"
+                        />
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               )}
             </div>
@@ -4373,12 +5495,12 @@ export default function App() {
                           <input
                             type="file"
                             multiple
-                            accept="audio/*"
+                            accept="audio/*,.lrc"
                             className="hidden"
                             onChange={handleMusicUpload}
                           />
                         </label>
-
+ 
                         {/* Directory Folder Upload Selector */}
                         <label
                           className={`flex-1 py-2 px-3 text-[10px] font-mono border cursor-pointer flex items-center justify-center gap-1.5 transition-all uppercase ${
@@ -4392,7 +5514,7 @@ export default function App() {
                             multiple
                             webkitdirectory=""
                             directory=""
-                            accept="audio/*"
+                            accept="audio/*,.lrc"
                             className="hidden"
                             onChange={handleMusicUpload}
                           />
@@ -4403,17 +5525,54 @@ export default function App() {
                     {/* Playlist visualizer & Playback Control */}
                     <div className="md:col-span-8 flex flex-col justify-between">
                       <div className="space-y-1">
-                        <span className="text-[9px] uppercase font-mono opacity-50 block mb-1.5">
-                          Local Workspace Playlist ({uploadedTracks.length} files loaded)
-                        </span>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1.5">
+                          <span className="text-[9px] uppercase font-mono opacity-50 block">
+                            Local Workspace Playlist ({getFilteredTracks().length} files loaded)
+                          </span>
 
-                        {uploadedTracks.length === 0 ? (
+                          {/* Playlist Categories Switcher */}
+                          {(() => {
+                            const playlists = ['All', ...Array.from(new Set(uploadedTracks.map(t => t.playlist || 'Default'))).filter(Boolean)];
+                            if (playlists.length > 2) {
+                              return (
+                                <div className="flex flex-wrap gap-1">
+                                  {playlists.map(p => (
+                                    <button
+                                      key={p}
+                                      onClick={() => {
+                                        setSelectedPlaylist(p);
+                                        setCurrentTrackIndex(0);
+                                        const filtered = p === 'All' ? uploadedTracks : uploadedTracks.filter(t => (t.playlist || 'Default') === p);
+                                        if (filtered.length > 0 && localAudioRef.current) {
+                                          localAudioRef.current.src = filtered[0].url;
+                                          if (isPlayingMusic) {
+                                            localAudioRef.current.play().catch(e => console.log(e));
+                                          }
+                                        }
+                                      }}
+                                      className={`px-2 py-0.5 rounded text-[8px] font-mono tracking-wide uppercase transition-all cursor-pointer ${
+                                        selectedPlaylist === p
+                                          ? 'bg-[#D95D39] text-white font-bold shadow-sm'
+                                          : 'bg-neutral-500/10 hover:bg-neutral-500/15 text-neutral-400'
+                                      }`}
+                                    >
+                                      {p}
+                                    </button>
+                                  ))}
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
+
+                        {getFilteredTracks().length === 0 ? (
                           <div className="border border-dashed border-neutral-500/15 p-6 text-center text-[10px] font-mono text-gray-500 italic">
-                            No custom tracks uploaded. Load audio files or select a full directory folder.
+                            No custom tracks in this category. Load files or select another playlist.
                           </div>
                         ) : (
                           <div className={`border divide-y max-h-[140px] overflow-y-auto ${darkMode ? 'border-neutral-800 bg-neutral-950 divide-neutral-800' : 'border-gray-200 bg-white divide-gray-100'}`}>
-                            {uploadedTracks.map((track, idx) => {
+                            {getFilteredTracks().map((track, idx) => {
                               const isCurrent = idx === currentTrackIndex && musicType === 'local';
                               return (
                                 <button
@@ -4429,7 +5588,7 @@ export default function App() {
                                     }
                                     addLog(`Selected track: ${track.name}`);
                                   }}
-                                  className={`w-full text-left px-3 py-1.5 text-[10px] font-mono flex items-center justify-between transition-colors ${
+                                  className={`w-full group text-left px-3 py-1.5 text-[10px] font-mono flex items-center justify-between transition-colors ${
                                     isCurrent
                                       ? 'bg-[#D95D39]/10 text-[#D95D39] font-bold'
                                       : 'hover:bg-neutral-500/5'
@@ -4438,6 +5597,9 @@ export default function App() {
                                   <div className="flex items-center gap-2 truncate">
                                     <span className="opacity-45">#{(idx + 1).toString().padStart(2, '0')}</span>
                                     <span className="truncate">{track.name}</span>
+                                    {track.playlist && track.playlist !== 'Default' && (
+                                      <span className="px-1 py-0.2 rounded bg-neutral-500/10 text-neutral-500 text-[7px] font-bold uppercase tracking-wider">{track.playlist}</span>
+                                    )}
                                   </div>
                                   <div className="flex items-center gap-1.5 shrink-0">
                                     {isCurrent && isPlayingMusic ? (
@@ -4518,6 +5680,20 @@ export default function App() {
                               <Repeat size={12} />
                             </button>
 
+                            {/* Lyrics Toggle Button */}
+                            <button
+                              onClick={() => {
+                                setShowLyrics(!showLyrics);
+                                setIsEditingLyrics(false);
+                              }}
+                              className={`p-1.5 border rounded-full transition-all shrink-0 cursor-pointer text-[10px] font-mono font-bold leading-none w-7 h-7 flex items-center justify-center ${
+                                showLyrics ? 'bg-[#D95D39] border-[#D95D39] text-white' : 'border-neutral-500/30 text-neutral-500 hover:bg-neutral-500/10'
+                              }`}
+                              title="Toggle Synced Lyrics"
+                            >
+                              Ly
+                            </button>
+
                             {isPlayingMusic && (
                               <div className="flex items-center gap-1.5 font-mono text-[9px] text-[#D95D39] shrink-0 animate-pulse ml-2">
                                 <span className="w-1.5 h-1.5 bg-[#D95D39] rounded-full"></span>
@@ -4549,6 +5725,102 @@ export default function App() {
                             </span>
                           </div>
                         </div>
+
+                        {/* Synced Lyrics Integration */}
+                        {showLyrics && (
+                          <div className={`mt-3 border border-dashed p-4 rounded-md text-center relative ${
+                            darkMode ? 'border-neutral-800 bg-neutral-900/30 text-gray-200' : 'border-gray-200 bg-gray-50/50 text-gray-800'
+                          }`}>
+                            <div className="flex justify-between items-center mb-2 pb-1 border-b border-dashed border-neutral-500/10">
+                              <span className="text-[9px] uppercase tracking-wider font-bold text-[#D95D39] font-mono">Synced Lyrics</span>
+                              <button
+                                onClick={() => {
+                                  setLyricsValidationError(null);
+                                  setIsEditingLyrics(!isEditingLyrics);
+                                  setLyricsEditorText(getLyricsForCurrentTrack());
+                                }}
+                                className="text-[9px] text-neutral-400 hover:text-[#D95D39] font-mono hover:underline cursor-pointer"
+                              >
+                                {isEditingLyrics ? "Cancel" : "Edit Lyrics"}
+                              </button>
+                            </div>
+                            
+                            {isEditingLyrics ? (
+                              <div className="flex flex-col gap-2 text-left">
+                                <textarea
+                                  value={lyricsEditorText}
+                                  onChange={(e) => setLyricsEditorText(e.target.value)}
+                                  className={`w-full h-24 text-[10px] font-mono p-2 border rounded resize-none focus:outline-none focus:ring-1 focus:ring-[#D95D39] ${
+                                    darkMode ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-white border-neutral-300 text-neutral-800'
+                                  }`}
+                                  placeholder="Type or paste synced lyrics here. Format: [00:15] Lyric line"
+                                />
+                                {lyricsValidationError && (
+                                  <p className="text-[10px] text-red-500 font-mono bg-red-500/10 p-1.5 rounded border border-red-500/20 leading-snug">
+                                    ⚠️ {lyricsValidationError}
+                                  </p>
+                                )}
+                                <div className="flex justify-end">
+                                  <button
+                                    onClick={() => {
+                                      const validation = validateLrc(lyricsEditorText);
+                                      if (!validation.isValid) {
+                                        setLyricsValidationError(validation.error || "Malformed LRC data");
+                                        return;
+                                      }
+                                      setLyricsValidationError(null);
+                                      const currentTrackName = musicType === 'local' && uploadedTracks[currentTrackIndex]
+                                        ? uploadedTracks[currentTrackIndex].name
+                                        : 'synth_' + synthType;
+                                      const updated = { ...trackLyrics, [currentTrackName]: lyricsEditorText };
+                                      setTrackLyrics(updated);
+                                      localStorage.setItem('focus_track_lyrics', JSON.stringify(updated));
+                                      setIsEditingLyrics(false);
+                                      addLog(`Lyrics updated for: ${currentTrackName}`);
+                                    }}
+                                    className="px-3 py-1 bg-[#D95D39] text-white text-[10px] font-bold rounded hover:bg-[#c44e2e] cursor-pointer"
+                                  >
+                                    Save Lyrics
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="py-2 flex flex-col justify-center items-center min-h-[52px] overflow-hidden">
+                                {isPlayingMusic && (musicType === 'local' || musicType === 'synth') ? (
+                                  (() => {
+                                    const lyricsText = getLyricsForCurrentTrack();
+                                    if (!lyricsText) {
+                                      return (
+                                        <div className="text-center w-full animate-fade-in">
+                                          <p className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 italic">
+                                            No synced lyrics found. Upload a matching .lrc file or click Edit.
+                                          </p>
+                                        </div>
+                                      );
+                                    }
+                                    const activeLyric = getActiveLyricLine(lyricsText, songCurrentTime, songDuration);
+                                    return (
+                                      <div className="text-center w-full">
+                                        <p key={activeLyric.index} className="lyric-slide-up text-sm font-serif italic font-bold text-neutral-800 dark:text-neutral-100 leading-relaxed">
+                                          "{activeLyric.current || "..."}"
+                                        </p>
+                                        {activeLyric.next && (
+                                          <p className="text-[10px] text-neutral-400 dark:text-neutral-500 italic mt-1.5 opacity-60 truncate max-w-full">
+                                            Next: {activeLyric.next}
+                                          </p>
+                                        )}
+                                      </div>
+                                    );
+                                  })()
+                                ) : (
+                                  <p className="text-[10px] font-mono opacity-65 italic text-gray-500">
+                                    Music is paused. Play music to view synced lyrics.
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -23,3 +23,45 @@
   50% { transform: rotateX(-90deg); opacity: 0.3; }
   100% { transform: rotateX(0deg); opacity: 1; }
 }
+
+@keyframes cloudDrift {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  50% { transform: translateY(-12px) translateX(25px); }
+}
+
+@keyframes rainDrop {
+  0% { transform: translateY(-50px) rotate(-12deg); opacity: 0; }
+  10% { opacity: 0.5; }
+  90% { opacity: 0.5; }
+  100% { transform: translateY(105vh) rotate(-12deg); opacity: 0; }
+}
+
+.cloud-drift-1 {
+  animation: cloudDrift 28s infinite ease-in-out;
+}
+.cloud-drift-2 {
+  animation: cloudDrift 40s infinite ease-in-out reverse;
+}
+.cloud-drift-3 {
+  animation: cloudDrift 20s infinite ease-in-out;
+}
+.rain-drop-anim {
+  animation: rainDrop 1.2s linear infinite;
+}
+
+@keyframes slideLyricUp {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.lyric-slide-up {
+  animation: slideLyricUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
