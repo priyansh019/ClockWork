@@ -180,6 +180,8 @@ interface Task {
   completed: boolean;
   estimatedTime: string;
   aiComment: string;
+  createdAt?: number;
+  manualProgress?: number;
 }
 
 interface Sticky {
@@ -882,7 +884,7 @@ export default function App() {
   const [songDuration, setSongDuration] = useState(0);
 
   // --- LYRICS & ATMOSPHERE STATES ---
-  const [showLyrics, setShowLyrics] = useState(false);
+  const [showLyrics, setShowLyrics] = useState(true);
   const [isEditingLyrics, setIsEditingLyrics] = useState(false);
   const [lyricsEditorText, setLyricsEditorText] = useState('');
   const [lyricsValidationError, setLyricsValidationError] = useState<string | null>(null);
@@ -946,6 +948,17 @@ export default function App() {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  const getTaskDurationMinutes = (est: string): number => {
+    if (!est) return 45;
+    const lower = est.toLowerCase();
+    const match = lower.match(/\d+(\.\d+)?/);
+    const num = match ? parseFloat(match[0]) : 45;
+    if (lower.includes('hour') || lower.includes('hr') || lower.includes('h')) {
+      return num * 60;
+    }
+    return num;
+  };
 
   const getRemainingTimeText = (deadline: string): string => {
     const now = localTime || new Date();
@@ -1249,6 +1262,7 @@ export default function App() {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDeadline, setNewTaskDeadline] = useState('17:00');
   const [newTaskPriority, setNewTaskPriority] = useState<'high' | 'medium' | 'low'>('medium');
+  const [newTaskEstimatedTime, setNewTaskEstimatedTime] = useState('45 mins');
   
   const [newStickyText, setNewStickyText] = useState('');
   const [newStickyColor, setNewStickyColor] = useState('#FFF9C4');
@@ -1257,6 +1271,7 @@ export default function App() {
   // Dictation / Voice Dictation States
   const [isDictatingTask, setIsDictatingTask] = useState(false);
   const [isDictatingSticky, setIsDictatingSticky] = useState(false);
+  const [isDictatingMindChat, setIsDictatingMindChat] = useState(false);
 
   // Day Flow Edit/Add states
   const [showAddSlotForm, setShowAddSlotForm] = useState(false);
@@ -1416,6 +1431,21 @@ export default function App() {
       cancelAnimationFrame(rAFId);
     };
   }, [isPlayingMusic]);
+
+  // Handle virtual playback progress for synthesized ambient sound loops to sync lyrics
+  useEffect(() => {
+    let interval: any = null;
+    if (isPlayingMusic && musicType === 'synth') {
+      setSongDuration(120); // nominal loop duration for synth lyrics
+      setSongCurrentTime(0);
+      interval = setInterval(() => {
+        setSongCurrentTime(prev => (prev >= 120 ? 0 : prev + 1));
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isPlayingMusic, musicType, synthType]);
 
   // --- LYRICS PARSING & SYNCHRONIZATION HELPERS ---
   const getCleanBaseName = (filename: string): string => {
@@ -2311,8 +2341,10 @@ export default function App() {
       priority: newTaskPriority,
       priorityNum: '0' + (tasks.length + 1),
       completed: false,
-      estimatedTime: '45 mins',
-      aiComment: 'Awaiting dynamic AI priority sweep.'
+      estimatedTime: newTaskEstimatedTime || '45 mins',
+      aiComment: 'Awaiting dynamic AI priority sweep.',
+      createdAt: Date.now(),
+      manualProgress: 0
     };
 
     const updated = [...tasks, newTask];
@@ -4642,7 +4674,7 @@ export default function App() {
                   Register Immediate Commitment
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-                  <div className="md:col-span-6">
+                  <div className="md:col-span-4">
                     <input
                       type="text"
                       placeholder="e.g. Physics blueprint revision, write growth strategy slides"
@@ -4678,9 +4710,27 @@ export default function App() {
                     </select>
                   </div>
                   <div className="md:col-span-2">
+                    <select
+                      value={newTaskEstimatedTime}
+                      onChange={(e) => setNewTaskEstimatedTime(e.target.value)}
+                      className={`w-full border px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#D95D39] rounded-none ${
+                        darkMode ? 'bg-neutral-900 border-neutral-800 text-[#FDFCFB]' : 'bg-white border-[#1A1A1A] text-[#1A1A1A]'
+                      }`}
+                    >
+                      <option value="15 mins">15 mins</option>
+                      <option value="30 mins">30 mins</option>
+                      <option value="45 mins">45 mins</option>
+                      <option value="60 mins">60 mins</option>
+                      <option value="90 mins">90 mins</option>
+                      <option value="2 hours">2 hours</option>
+                      <option value="3 hours">3 hours</option>
+                      <option value="4 hours">4 hours</option>
+                    </select>
+                  </div>
+                  <div className="md:col-span-2">
                     <button
                       type="submit"
-                      className="w-full bg-[#D95D39] text-white py-2 px-3 hover:bg-[#c44e2e] font-mono text-sm uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors"
+                      className="w-full bg-[#D95D39] text-white py-2 px-3 hover:bg-[#c44e2e] font-mono text-sm uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
                       <Plus size={15} />
                       Add
@@ -4693,7 +4743,7 @@ export default function App() {
               <div>
                 <div className="flex justify-between items-baseline mb-4">
                   <h2 className="text-xs uppercase tracking-widest font-bold opacity-60 font-mono">
-                    High-Urgency Pipeline ({tasks.filter(t => !t.completed).length} pending)
+                    Commits ({tasks.filter(t => !t.completed).length} pending)
                   </h2>
                   {tasks.length > 0 && (
                     <button
@@ -4742,7 +4792,7 @@ export default function App() {
                             )}
                           </button>
 
-                          <div className="space-y-0.5 min-w-0 flex-1">
+                          <div className="space-y-1 min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
                               <span className={`text-xs font-bold truncate ${task.completed ? 'line-through' : ''}`}>
                                 {task.title}
@@ -4761,6 +4811,102 @@ export default function App() {
                               </span>
                             </div>
                             
+                            {/* Visual Progress Bar Component */}
+                            {(() => {
+                              const durationMin = getTaskDurationMinutes(task.estimatedTime);
+                              const autoProgress = task.createdAt 
+                                ? Math.min(100, Math.max(0, Math.round(((Date.now() - task.createdAt) / (durationMin * 60 * 1000)) * 100))) 
+                                : 0;
+                              const isManual = task.manualProgress !== undefined;
+                              const currentProgress = isManual ? (task.manualProgress || 0) : autoProgress;
+
+                              const handleAdjustProgress = (e: React.MouseEvent, delta: number) => {
+                                e.stopPropagation();
+                                setTasks(prev => prev.map(t => {
+                                  if (t.id === task.id) {
+                                    const base = t.manualProgress !== undefined ? t.manualProgress : autoProgress;
+                                    const nextVal = Math.min(100, Math.max(0, base + delta));
+                                    return { ...t, manualProgress: nextVal };
+                                  }
+                                  return t;
+                                }));
+                              };
+
+                              const handleResetToAuto = (e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                setTasks(prev => prev.map(t => {
+                                  if (t.id === task.id) {
+                                    const { manualProgress, ...rest } = t;
+                                    return rest;
+                                  }
+                                  return t;
+                                }));
+                              };
+
+                              return (
+                                <div className="mt-1 flex flex-col gap-1 max-w-md font-mono text-[9px] text-neutral-400 select-none">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className={`text-[8px] uppercase tracking-wider px-1 border ${
+                                        isManual 
+                                          ? 'border-amber-500/30 text-amber-500 bg-amber-500/5' 
+                                          : 'border-blue-500/30 text-blue-500 bg-blue-500/5'
+                                      }`}>
+                                        {isManual ? 'Manual Tracker' : 'Time-Elapsed Auto'}
+                                      </span>
+                                      <span className="text-[9px] font-bold text-neutral-300">
+                                        {task.completed ? 100 : currentProgress}%
+                                      </span>
+                                      {isManual && !task.completed && (
+                                        <button
+                                          type="button"
+                                          onClick={handleResetToAuto}
+                                          className="text-[8px] text-blue-500 hover:underline cursor-pointer bg-transparent border-none p-0"
+                                          title="Switch back to elapsed time tracking"
+                                        >
+                                          (Auto Sync)
+                                        </button>
+                                      )}
+                                    </div>
+
+                                    {!task.completed && (
+                                      <div className="flex items-center gap-1">
+                                        <button
+                                          type="button"
+                                          onClick={(e) => handleAdjustProgress(e, -10)}
+                                          className="w-3.5 h-3.5 rounded border border-neutral-700 flex items-center justify-center hover:bg-neutral-800 hover:text-white cursor-pointer active:scale-95 transition-all text-[9px] font-bold"
+                                          title="Decrease progress by 10%"
+                                        >
+                                          -
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => handleAdjustProgress(e, 10)}
+                                          className="w-3.5 h-3.5 rounded border border-neutral-700 flex items-center justify-center hover:bg-neutral-800 hover:text-white cursor-pointer active:scale-95 transition-all text-[9px] font-bold"
+                                          title="Increase progress by 10%"
+                                        >
+                                          +
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="h-1 w-full bg-neutral-800/60 rounded-full overflow-hidden border border-neutral-700/50">
+                                    <div 
+                                      className={`h-full transition-all duration-300 ease-out rounded-full ${
+                                        task.completed 
+                                          ? 'bg-green-500' 
+                                          : isManual 
+                                          ? 'bg-gradient-to-r from-amber-500 to-orange-500' 
+                                          : 'bg-gradient-to-r from-blue-500 to-[#D95D39]'
+                                      }`}
+                                      style={{ width: `${task.completed ? 100 : currentProgress}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
                             {/* AI Comment */}
                             <p className={`text-[10px] font-mono truncate leading-normal italic flex items-center gap-1 ${
                               darkMode ? 'text-gray-400' : 'text-gray-600'

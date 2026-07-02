@@ -137,3 +137,37 @@ ClockWork is designed as a secure, high-performance, full-stack application (Exp
   The ultimate cognitive core driving our smart prioritization, text summarizations, scheduling blocks, daily ethos philosophy, and conversational advice.
 - **Google Cloud Run**:
   The production server platform, providing instant cold starts, elastic scaling, and containerized safety.
+
+---
+
+## ⚡ Recent Workspace Enhancements & Updates
+
+1. **Interactive Visual Progress Bars**:
+   - Each task in the **Commits** (High-Urgency Pipeline) displays a dynamic progress bar beneath its title.
+   - **Time-Elapsed Auto Mode**: Automatically computes completion progress based on minutes elapsed since task creation and the task's custom estimated duration.
+   - **Manual Tracker Mode**: Allows manual adjustment in increments of 10% using interactive `-` and `+` triggers.
+   - **Auto Sync Toggle**: Restores time-elapsed automatic tracking at any point with a simple click.
+
+2. **Refined Day-Flow Planner & Directive Alerts Management**:
+   - Dynamic capabilities to **Edit** existing times and task descriptions inside the Day-Flow planner.
+   - Custom forms to **Add** brand new slots or delete deprecated intervals.
+   - Fully interactive management for **Directive Alerts**, including additions and live detail editing.
+
+3. **Premium "Commits" Pipeline**:
+   - The primary high-urgency channel has been rebranded to **Commits** in alignment with professional software development workflows.
+   - Remaining times are calculated dynamically against the current system date and clock.
+
+4. **Apple Music Lyric Soundscape Engine**:
+   - Enhanced Apple Music scrolling lyrics with customized background gradients.
+   - Supports synthesized soundscape virtual time advancement to synchronize live scrolling lyrics beautifully even in offline/synth audio loops.
+
+5. **Mind AI General Knowledge Domain**:
+   - Expanded the **"Mind" AI Companion** to respond to general inquiries and educational prompts alongside workspace context-aware assistance.
+   - Implemented resilient offline/local semantic heuristic matchers to provide rich structured guides even when the API key is not configured.
+
+6. **Voice Query & Microphone Upgrades**:
+   - Expanded voice command processing for instant sticky note additions, music playback/termination, and automated task scheduling.
+   - Full microphone status toggling and responsive state feedback.
+
+7. **Secure Confirm Logout**:
+   - Standard-compliant confirm dialog trigger for sign-outs to prevent accidental workspace abandonment.

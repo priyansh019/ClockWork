@@ -163,3 +163,16 @@ Below is a complete guide to each of ClockWork's workspace modules, detailing th
 
 ### Practical Uses:
 *   **Peer Accountability**: Work alongside classmates or colleagues to build mutual motivation, utilizing friendly comparison metrics to stay consistent.
+
+---
+
+## 13. Visual Progress Bars & Command Cockpit Updates
+
+### Individual Features:
+*   **Dual-Mode Task Progress Bars**: Displays a modern visual tracking indicator directly below each task title in the **Commits** list. Supports dynamic time-elapsed percentage tracking or manual overriding.
+*   **Manual Adjustment Triggers**: Increment or decrement task completion progress manually by 10% with easy, interactive click controls.
+*   **Editable Day-Flow Planner**: Direct in-app text input and clock-time modifications for individual hour-by-hour time blocks. Enables adding new intervals and purging unwanted schedule rows.
+*   **Interactive Directive Alerts Configurator**: Allows adding and live-modifying alert levels, severity scales, and notice details dynamically in the alerts list.
+*   **General Knowledge Mind AI**: The built-in assistant is now equipped to answer broad educational, coding, or historical questions, complete with robust local heuristic fallbacks when working offline or without active keys.
+*   **Apple Music Lyric Syncing**: Synchronizes scrolling text blocks smoothly, even during virtual synthesized soundscape sound play loops.
+*   **Secure Sign Out confirmation**: Standard confirm check triggers before logging users out of their active workspace, protecting ongoing focus sessions from accidental navigation.

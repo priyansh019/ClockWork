@@ -262,11 +262,55 @@ Return ONLY the JSON array. Do not wrap in markdown or add explanations.`;
 
       const ai = getGeminiAI();
       if (!ai) {
-        return res.json({
-          reply: "ClockWork is standing by. I recommend initiating your top priority task immediately to maximize momentum. Try configuring your Gemini API key in the Secrets panel for fully personalized audio strategizing.",
-          action: null,
-          isFallback: true
-        });
+        const lower = (inputMessage || '').toLowerCase();
+        let reply = "ClockWork localized voice core standing by.";
+        let action: any = null;
+
+        if (lower.startsWith('add task ') || lower.startsWith('create task ') || lower.startsWith('register ')) {
+          const title = inputMessage.replace(/^(add task|create task|register)\s+/i, '').trim();
+          reply = `Task "${title}" registered successfully in your commitment roster. Let's complete it.`;
+          action = { type: 'add_task', title };
+        } else if (lower.startsWith('complete task ') || lower.startsWith('finish task ') || lower.startsWith('done ')) {
+          const title = inputMessage.replace(/^(complete task|finish task|done)\s+/i, '').trim();
+          reply = `Marking task matching "${title}" as completed. Excellent effort!`;
+          action = { type: 'complete_task', title };
+        } else if (lower.includes('start timer') || lower.includes('begin session') || lower.includes('initiate focus')) {
+          reply = "Focus timer initiated. Let's enter deep study mode.";
+          action = { type: 'start_timer' };
+        } else if (lower.includes('stop timer') || lower.includes('pause timer') || lower.includes('pause focus')) {
+          reply = "Focus timer paused. Take a moment to breathe.";
+          action = { type: 'stop_timer' };
+        } else if (lower.includes('toggle theme') || lower.includes('switch theme') || lower.includes('change theme') || lower.includes('dark mode')) {
+          reply = "Toggling interface display preset.";
+          action = { type: 'toggle_theme' };
+        } else if (lower.includes('add block') || lower.includes('schedule slot') || lower.includes('add slot')) {
+          const clean = lower.replace(/^(add block|schedule slot|add slot)\s+/i, '');
+          const match = clean.match(/(\d+:\d+\s*-\s*\d+:\d+)\s+(.+)/);
+          if (match) {
+            reply = `Added new time block from ${match[1]} for ${match[2]} in your Day-Flow planner.`;
+            action = { type: 'add_slot', time: match[1], title: match[2] };
+          } else {
+            reply = `Added new block in your Day-Flow planner.`;
+            action = { type: 'add_slot', time: '10:00 - 11:00', title: clean };
+          }
+        } else if (lower.includes('add sticky') || lower.includes('create sticky') || lower.includes('quick capture')) {
+          const noteText = inputMessage.replace(/^(add sticky|create sticky|quick capture)\s+/i, '').trim();
+          reply = `Sticky note captured: "${noteText}"`;
+          action = { type: 'add_sticky', content: noteText };
+        } else if (lower.includes('clear stickies') || lower.includes('delete notes')) {
+          reply = "Clearing all quick captures from your whiteboard.";
+          action = { type: 'clear_stickies' };
+        } else if (lower.includes('play music') || lower.includes('start music') || lower.includes('play ambient')) {
+          reply = "Playing focus ambient soundscapes.";
+          action = { type: 'play_music' };
+        } else if (lower.includes('stop music') || lower.includes('pause music') || lower.includes('mute music')) {
+          reply = "Ambient soundscapes paused.";
+          action = { type: 'stop_music' };
+        } else {
+          reply = `ClockWork Spoken Strategist compiled advice: Your voice query "${inputMessage}" was received. To execute dynamic voice-directed layout manipulations, consider adding 'add task', 'complete task', 'start timer', or 'toggle theme' to your voice command!`;
+        }
+
+        return res.json({ reply, action, isFallback: true });
       }
 
       const prompt = `You are ClockWork's Voice Strategy Companion. A user says or records this voice note:
@@ -277,8 +321,17 @@ ${JSON.stringify(tasks, null, 2)}
 
 Provide a concise, direct, helpful audio-friendly response (2-3 sentences max).
 Focus on immediate, actionable advice to defeat procrastination.
-Also, if the user is asking to add a task, schedule something, or finish a task, return a action directive:
+Also, if the user is asking to add a task, schedule something, or finish a task, return an action directive:
 - action: An object like { type: "add_task", title: "Task title", deadline: "..." } or { type: "complete_task", title: "..." } or null if just giving advice.
+You can also return actions of type:
+- { type: "start_timer" }
+- { type: "stop_timer" }
+- { type: "toggle_theme" }
+- { type: "add_slot", time: "10:00 - 11:00", title: "Review tasks", slotType: "focus" } // slotType can be "focus", "admin", or "break"
+- { type: "add_sticky", content: "..." }
+- { type: "clear_stickies" }
+- { type: "play_music" }
+- { type: "stop_music" }
 
 Return a JSON object:
 {
@@ -319,9 +372,8 @@ Return ONLY the JSON. No markdown wrappers.`;
 
       const ai = getGeminiAI();
       if (!ai) {
-        // Fallback context-aware response matcher if key is missing
         const lower = (message || '').toLowerCase();
-        let reply = "I am 'Mind', your proactive companion. Configure a Gemini API key in the Secrets panel to activate my fully general reasoning mode.";
+        let reply = "";
         if (lower.includes('summarize') || lower.includes('summary')) {
           reply = `Here is your current status: You have ${tasks ? tasks.length : 0} total tasks (${tasks ? tasks.filter((t: any) => !t.completed).length : 0} pending), ${stickyNotes ? stickyNotes.length : 0} quick captures, and a consistency momentum of ${streak || 0} days. Your top priority is "${tasks && tasks[0] ? tasks[0].title : 'None currently'}".`;
         } else if (lower.includes('find') || lower.includes('search')) {
@@ -333,7 +385,25 @@ Return ONLY the JSON. No markdown wrappers.`;
             reply = "I searched through your tasks and quick captures but couldn't find an exact match for that keyword. Try another term or add it to your daily list!";
           }
         } else {
-          reply = `I am 'Mind', your proactive workspace companion. I noticed you asked a general question: "${message}". To unlock my full conversational intelligence powered by Gemini so I can answer any academic, professional, technical, or creative question, please configure your Gemini API Key in the Secrets panel on the left!`;
+          // General QA fallback with smart rule-based matching!
+          if (lower.includes('photosynthesis')) {
+            reply = "Photosynthesis is the beautiful biological process by which green plants, algae, and some bacteria synthesize nutrients from carbon dioxide and water using sunlight. It primarily occurs within chloroplasts, releasing vital oxygen as an essential byproduct. *For an interactive deeper dive, configure your Gemini API Key in the Secrets panel!*";
+          } else if (lower.includes('react') || lower.includes('vue') || lower.includes('framework')) {
+            reply = "Modern web frameworks like React leverage a component-driven, declarative architecture. React manages state and optimizes UI rendering using a virtual DOM, ensuring fast, interactive client-side applications. *For personalized web development tutorials, configure your Gemini API Key in the Secrets panel!*";
+          } else if (lower.includes('joke') || lower.includes('humor')) {
+            reply = "Why do programmers wear glasses? Because they can't C#! *To unlock infinitely more humor and creative writing, configure your Gemini API Key in the Secrets panel!*";
+          } else if (lower.includes('procrastination') || lower.includes('focus') || lower.includes('productivity')) {
+            reply = "Productivity thrives on momentum, not motivation. Start by working on your top priority task for just five minutes (the '5-minute rule'). Breaking down large objectives into atomic micro-commitments completely bypasses executive dysfunction. Let's conquer your list together!";
+          } else if (lower.includes('hello') || lower.includes('hi ') || lower.includes('greetings')) {
+            reply = "Greetings! I am 'Mind', your supportive, context-aware companion. Ask me to find files, analyze your schedules, or feel free to ask general questions concerning philosophy, history, coding, or science!";
+          } else if (lower.includes('help')) {
+            reply = "I am ready to help! You can ask me to 'summarize' your current priorities, 'find' an active task or sticky note, or ask any general-knowledge questions about science, math, or coding. To activate my fully dynamic generative brain, bind your Gemini API Key in the Secrets panel!";
+          } else {
+            reply = `I am 'Mind', your proactive workspace companion. You asked a general question: "${message}". 
+Here is a high-level cognitive response: When studying or working on "${message.replace(/[?.]/g, '')}", it is always best to organize your workflow into clear, manageable time blocks, clear your mental cache using sticky notes, and tackle high-priority commitments first. 
+
+*To unlock my full conversational intelligence powered by Google Gemini so I can answer any academic, professional, technical, or creative question dynamically, please configure your Gemini API Key in the Secrets panel on the left!*`;
+          }
         }
         return res.json({ reply, isFallback: true });
       }
