@@ -96,8 +96,8 @@ ClockWork is designed as a secure, high-performance, full-stack application (Exp
 5. **Excel/CSV Timetable Synchronizer**:
    Supports dragging and dropping plain CSV or spreadsheet tables. ClockWork extracts schedule columns, displays a visual verification list, and synchronizes items directly into both the daily tasks pipeline and the day-flow planner.
 
-6. **Duolingo-style Streak & Weekly Calendar Tracker**:
-   Displays consecutive active days. Features a horizontal 7-day weekly grid representing Duolingo-like goal tracking. Completing at least one daily task ignites a glowing fire emoji (🔥) on the weekly calendar.
+6. **Weekly Day Streak Tracker**:
+   Displays consecutive active days. Features a horizontal 7-day weekly grid representing daily task streak tracking (Completed vs. Missed days). Completing at least one daily task ignites a glowing fire emoji (🔥) on the weekly calendar.
 
 7. **Cognitive Companion "Mind"**:
    A dedicated chat section powered by **"Mind"**. Unlike typical generic chatbots, "Mind" has instant visibility of all current sticky notes, streak data, tasks, and scheduling slots. Users can query "Mind" to *find* specific files/ideas, *summarize* their overall day, or *identify scheduling gaps*.
@@ -149,8 +149,8 @@ ClockWork is designed as a secure, high-performance, full-stack application (Exp
    - **Auto Sync Toggle**: Restores time-elapsed automatic tracking at any point with a simple click.
 
 2. **Refined Day-Flow Planner & Directive Alerts Management**:
-   - Dynamic capabilities to **Edit** existing times and task descriptions inside the Day-Flow planner.
-   - Custom forms to **Add** brand new slots or delete deprecated intervals.
+   - Fully editable and manageable hour-by-hour planner. Added always-on, high-contrast **Edit** and **Delete** actions for both mouse and touch screens.
+   - Integrated header utility buttons: **Clear All** (to wipe the entire schedule) and **Load Defaults** (to load the template schedule).
    - Fully interactive management for **Directive Alerts**, including additions and live detail editing.
 
 3. **Premium "Commits" Pipeline**:
@@ -161,7 +161,8 @@ ClockWork is designed as a secure, high-performance, full-stack application (Exp
    - Enhanced Apple Music scrolling lyrics with customized background gradients.
    - Supports synthesized soundscape virtual time advancement to synchronize live scrolling lyrics beautifully even in offline/synth audio loops.
 
-5. **Mind AI General Knowledge Domain**:
+5. **Mind AI General Knowledge Domain & Low Latency**:
+   - Configured all Google Gemini API prompts with **ThinkingLevel.MINIMAL** settings, making Mind AI blazing fast and highly responsive with near-zero latency.
    - Expanded the **"Mind" AI Companion** to respond to general inquiries and educational prompts alongside workspace context-aware assistance.
    - Implemented resilient offline/local semantic heuristic matchers to provide rich structured guides even when the API key is not configured.
 
@@ -169,5 +170,9 @@ ClockWork is designed as a secure, high-performance, full-stack application (Exp
    - Expanded voice command processing for instant sticky note additions, music playback/termination, and automated task scheduling.
    - Full microphone status toggling and responsive state feedback.
 
-7. **Secure Confirm Logout**:
+7. **Weekly Streak Tracker Upgrade**:
+   - Removed external gamified dependencies and redesigned the streak calendar into a clean, standalone weekly calendar card.
+   - Displays clear completed/missed status for each day of the week with manual override toggles.
+
+8. **Secure Confirm Logout**:
    - Standard-compliant confirm dialog trigger for sign-outs to prevent accidental workspace abandonment.

@@ -2382,6 +2382,60 @@ export default function App() {
     }));
   };
 
+  const handleAddScheduleSlot = (e: FormEvent) => {
+    e.preventDefault();
+    if (!newSlotTitle.trim()) return;
+    const newSlot: ScheduleSlot = {
+      time: newSlotTime,
+      taskTitle: newSlotTitle,
+      type: newSlotType,
+      completed: false
+    };
+    const updated = [...schedule, newSlot];
+    setSchedule(updated);
+    localStorage.setItem('cw_schedule', JSON.stringify(updated));
+    setNewSlotTitle('');
+    setShowAddSlotForm(false);
+    addLog(`Added brand new schedule slot: "${newSlot.taskTitle}"`);
+  };
+
+  const handleStartEditScheduleSlot = (index: number) => {
+    const slot = schedule[index];
+    setEditingSlotIndex(index);
+    setEditSlotTime(slot.time);
+    setEditSlotTitle(slot.taskTitle);
+    setEditSlotType(slot.type);
+  };
+
+  const handleSaveEditScheduleSlot = (e: FormEvent) => {
+    e.preventDefault();
+    if (editingSlotIndex === null || !editSlotTitle.trim()) return;
+    const updated = [...schedule];
+    updated[editingSlotIndex] = {
+      ...updated[editingSlotIndex],
+      time: editSlotTime,
+      taskTitle: editSlotTitle,
+      type: editSlotType
+    };
+    setSchedule(updated);
+    localStorage.setItem('cw_schedule', JSON.stringify(updated));
+    setEditingSlotIndex(null);
+    addLog(`Modified schedule slot: "${editSlotTitle}"`);
+  };
+
+  const handleDeleteScheduleSlot = (index: number) => {
+    const slot = schedule[index];
+    const updated = schedule.filter((_, idx) => idx !== index);
+    setSchedule(updated);
+    localStorage.setItem('cw_schedule', JSON.stringify(updated));
+    if (editingSlotIndex === index) {
+      setEditingSlotIndex(null);
+    } else if (editingSlotIndex !== null && editingSlotIndex > index) {
+      setEditingSlotIndex(editingSlotIndex - 1);
+    }
+    addLog(`Removed schedule slot: "${slot.taskTitle}"`);
+  };
+
   const handleAddSticky = (e: FormEvent) => {
     e.preventDefault();
     if (!newStickyText.trim()) return;
@@ -4946,10 +5000,177 @@ export default function App() {
                     <CalendarIcon size={11} />
                     Day-Flow Planner
                   </h3>
-                  <span className="text-[8px] uppercase font-mono opacity-50">
-                    Time Blocks
-                  </span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAddSlotForm(!showAddSlotForm);
+                        setEditingSlotIndex(null);
+                      }}
+                      className="px-2 py-0.5 text-[9px] font-mono border uppercase flex items-center gap-1 text-[#D95D39] border-[#D95D39]/30 hover:bg-[#D95D39]/10 cursor-pointer select-none"
+                    >
+                      {showAddSlotForm ? 'Close form' : '+ Add Block'}
+                    </button>
+                    {schedule.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSchedule([]);
+                          localStorage.setItem('cw_schedule', JSON.stringify([]));
+                          addLog('Cleared all day-flow planner blocks.');
+                        }}
+                        className="px-2 py-0.5 text-[9px] font-mono border uppercase flex items-center gap-1 text-red-500 border-red-500/30 hover:bg-red-500/10 cursor-pointer select-none"
+                        title="Clear all schedule blocks"
+                      >
+                        Clear All
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const defaults = [
+                            { time: '09:00 - 10:00', taskTitle: 'Morning Sync & Focus Block', type: 'focus', completed: false },
+                            { time: '10:00 - 12:00', taskTitle: 'Primary Project Execution', type: 'focus', completed: false },
+                            { time: '12:00 - 13:00', taskTitle: 'Recharge & Outbox Sweeping', type: 'admin', completed: false },
+                            { time: '13:00 - 14:00', taskTitle: 'Midday Strategy Recharge', type: 'break', completed: true },
+                            { time: '14:00 - 15:30', taskTitle: 'Secondary Task Execution', type: 'focus', completed: false },
+                          ];
+                          setSchedule(defaults);
+                          localStorage.setItem('cw_schedule', JSON.stringify(defaults));
+                          addLog('Restored default schedule blocks.');
+                        }}
+                        className="px-2 py-0.5 text-[9px] font-mono border uppercase flex items-center gap-1 text-blue-500 border-blue-500/30 hover:bg-blue-500/10 cursor-pointer select-none"
+                        title="Restore original default blocks"
+                      >
+                        Load Defaults
+                      </button>
+                    )}
+                    <span className="text-[8px] uppercase font-mono opacity-50 hidden sm:inline">
+                      Time Blocks
+                    </span>
+                  </div>
                 </div>
+
+                {/* ADD SLOT FORM */}
+                {showAddSlotForm && (
+                  <form onSubmit={handleAddScheduleSlot} className="mb-3 p-3 border border-dashed border-[#D95D39]/40 bg-[#D95D39]/5 space-y-2">
+                    <div className="text-[9px] uppercase font-bold font-mono text-[#D95D39]">Add Planner Block</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <div>
+                        <label className="block text-[8px] uppercase font-mono text-gray-500 mb-1">Time Range</label>
+                        <input
+                          type="text"
+                          value={newSlotTime}
+                          onChange={(e) => setNewSlotTime(e.target.value)}
+                          placeholder="e.g. 09:00 - 10:00"
+                          className={`w-full border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#D95D39] rounded-none ${
+                            darkMode ? 'bg-neutral-950 border-neutral-800 text-[#FDFCFB]' : 'bg-white border-[#1A1A1A] text-[#1A1A1A]'
+                          }`}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[8px] uppercase font-mono text-gray-500 mb-1">Block Name</label>
+                        <input
+                          type="text"
+                          value={newSlotTitle}
+                          onChange={(e) => setNewSlotTitle(e.target.value)}
+                          placeholder="e.g. Code Review"
+                          className={`w-full border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#D95D39] rounded-none ${
+                            darkMode ? 'bg-neutral-950 border-neutral-800 text-[#FDFCFB]' : 'bg-white border-[#1A1A1A] text-[#1A1A1A]'
+                          }`}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[8px] uppercase font-mono text-gray-500 mb-1">Type</label>
+                        <select
+                          value={newSlotType}
+                          onChange={(e) => setNewSlotType(e.target.value as any)}
+                          className={`w-full border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#D95D39] rounded-none ${
+                            darkMode ? 'bg-neutral-950 border-neutral-800 text-[#FDFCFB]' : 'bg-white border-[#1A1A1A] text-[#1A1A1A]'
+                          }`}
+                        >
+                          <option value="focus">Focus</option>
+                          <option value="admin">Admin</option>
+                          <option value="break">Break</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-1">
+                      <button
+                        type="submit"
+                        className="px-3 py-1 bg-[#D95D39] text-white text-xs font-mono uppercase tracking-wider hover:bg-[#c44e2e] cursor-pointer"
+                      >
+                        Save Block
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {/* EDIT SLOT FORM */}
+                {editingSlotIndex !== null && (
+                  <form onSubmit={handleSaveEditScheduleSlot} className="mb-3 p-3 border border-dashed border-amber-500/40 bg-amber-500/5 space-y-2">
+                    <div className="text-[9px] uppercase font-bold font-mono text-amber-500">Edit Planner Block</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <div>
+                        <label className="block text-[8px] uppercase font-mono text-gray-500 mb-1">Time Range</label>
+                        <input
+                          type="text"
+                          value={editSlotTime}
+                          onChange={(e) => setEditSlotTime(e.target.value)}
+                          className={`w-full border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 rounded-none ${
+                            darkMode ? 'bg-neutral-950 border-neutral-800 text-[#FDFCFB]' : 'bg-white border-[#1A1A1A] text-[#1A1A1A]'
+                          }`}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[8px] uppercase font-mono text-gray-500 mb-1">Block Name</label>
+                        <input
+                          type="text"
+                          value={editSlotTitle}
+                          onChange={(e) => setEditSlotTitle(e.target.value)}
+                          className={`w-full border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 rounded-none ${
+                            darkMode ? 'bg-neutral-950 border-neutral-800 text-[#FDFCFB]' : 'bg-white border-[#1A1A1A] text-[#1A1A1A]'
+                          }`}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[8px] uppercase font-mono text-gray-500 mb-1">Type</label>
+                        <select
+                          value={editSlotType}
+                          onChange={(e) => setEditSlotType(e.target.value as any)}
+                          className={`w-full border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 rounded-none ${
+                            darkMode ? 'bg-neutral-950 border-neutral-800 text-[#FDFCFB]' : 'bg-white border-[#1A1A1A] text-[#1A1A1A]'
+                          }`}
+                        >
+                          <option value="focus">Focus</option>
+                          <option value="admin">Admin</option>
+                          <option value="break">Break</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setEditingSlotIndex(null)}
+                        className={`px-3 py-1 border text-xs font-mono uppercase tracking-wider cursor-pointer ${
+                          darkMode ? 'border-neutral-700 text-gray-400 hover:bg-neutral-800' : 'border-[#1A1A1A] text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-3 py-1 bg-amber-500 text-white text-xs font-mono uppercase tracking-wider hover:bg-amber-600 cursor-pointer"
+                      >
+                        Update Block
+                      </button>
+                    </div>
+                  </form>
+                )}
 
                 {schedule.length === 0 ? (
                   <div className="text-center py-4 text-xs font-mono text-gray-500 italic">
@@ -4964,9 +5185,10 @@ export default function App() {
                           const updated = [...schedule];
                           updated[index].completed = !updated[index].completed;
                           setSchedule(updated);
+                          localStorage.setItem('cw_schedule', JSON.stringify(updated));
                           addLog(`Toggled block schedule slot: "${slot.taskTitle}"`);
                         }}
-                        className={`border p-2 flex justify-between items-center cursor-pointer transition-all hover:scale-[1.01] select-none ${
+                        className={`border p-2 flex justify-between items-center cursor-pointer transition-all hover:scale-[1.01] select-none group relative ${
                           slot.completed 
                             ? 'opacity-40 line-through' 
                             : ''
@@ -4986,6 +5208,33 @@ export default function App() {
                           </div>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
+                          {/* Always-on edit/delete triggers for touch & mouse usability */}
+                          <div className="flex items-center gap-1 mr-1">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStartEditScheduleSlot(index);
+                                setShowAddSlotForm(false);
+                              }}
+                              className="p-1.5 text-neutral-400 hover:text-amber-500 hover:bg-amber-500/10 dark:hover:bg-amber-500/20 rounded transition-colors cursor-pointer bg-transparent border-none flex items-center justify-center"
+                              title="Edit Block"
+                            >
+                              <Edit2 size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteScheduleSlot(index);
+                              }}
+                              className="p-1.5 text-neutral-400 hover:text-red-500 hover:bg-red-500/10 dark:hover:bg-red-500/20 rounded transition-colors cursor-pointer bg-transparent border-none flex items-center justify-center"
+                              title="Delete Block"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+
                           <span className={`text-[7px] uppercase font-mono px-1.5 py-0.2 rounded font-bold ${
                             slot.type === 'focus' 
                               ? 'bg-blue-100 text-blue-900 border border-blue-200' 
@@ -5089,7 +5338,7 @@ export default function App() {
                   <div className="text-3xl font-black font-serif text-amber-500 my-1.5 flex items-center gap-1">
                     🔥 {streak} days
                   </div>
-                  <span className="text-[9px] font-mono text-green-600 font-bold">Duolingo momentum verified</span>
+                  <span className="text-[9px] font-mono text-green-600 font-bold">Weekly Day Streak verified</span>
                 </div>
               </div>
 
@@ -7022,7 +7271,7 @@ export default function App() {
           <section id="sidebar-right" className={`p-6 flex flex-col gap-6 justify-between transition-colors lg:col-span-2 lg:order-3 ${activeTheme.cardBg}`}>
           <div className="space-y-6">
             
-            {/* STREAK & DUOLINGO-STYLE WEEK CALENDAR */}
+            {/* STREAK & WEEK CALENDAR */}
             <div className={`border p-5 text-center relative ${
               darkMode ? 'border-neutral-800 bg-[#1c1c1c]' : 'border-[#1A1A1A] bg-[#F2F0ED]'
             }`}>
@@ -7040,10 +7289,13 @@ export default function App() {
                 Days Consistent
               </div>
 
-              {/* DUOLINGO WEEK CALENDAR TRACKER */}
+              {/* WEEK CALENDAR TRACKER */}
               <div className="border-t border-dashed border-neutral-500/30 pt-4 space-y-2">
-                <div className="text-[8px] uppercase font-mono font-bold opacity-65 tracking-wider text-left">
-                  Duolingo Week Objective
+                <div className="text-[8px] uppercase font-mono font-bold opacity-65 tracking-wider text-left flex justify-between">
+                  <span>Weekly Day Streak</span>
+                  <span className="text-[7px] text-[#D95D39] lowercase">
+                    {Object.values(completedDays).filter(Boolean).length} done / {Object.keys(completedDays).length} days
+                  </span>
                 </div>
 
                 <div className="grid grid-cols-7 gap-1">
@@ -7054,25 +7306,28 @@ export default function App() {
                         const next = { ...completedDays, [day]: !isCompleted };
                         setCompletedDays(next);
                         localStorage.setItem('cw_completed_days', JSON.stringify(next));
-                        addLog(`Manually toggled week objective for ${day}.`);
+                        addLog(`Manually toggled weekly day streak for ${day}.`);
                       }}
-                      className={`py-2 text-[9px] font-mono border uppercase flex flex-col items-center justify-between min-h-[55px] relative transition-all hover:scale-[1.05] select-none ${
+                      className={`py-1 px-0.5 text-[9px] font-mono border uppercase flex flex-col items-center justify-between min-h-[58px] relative transition-all hover:scale-[1.05] select-none ${
                         isCompleted
                           ? 'border-[#D95D39] bg-[#D95D39]/5 font-bold'
                           : darkMode
                           ? 'border-neutral-800 bg-neutral-900 text-neutral-600'
                           : 'border-neutral-200 bg-white text-gray-400'
                       }`}
-                      title={`${day}: click to override completion status`}
+                      title={`${day}: ${isCompleted ? 'Completed' : 'Missed'} (click to override)`}
                     >
-                      <span>{day[0]}</span>
+                      <span className="text-[8px] opacity-75">{day[0]}</span>
                       <div className="h-5 flex items-center justify-center">
                         {isCompleted ? (
-                          <span className="text-base animate-pulse">🔥</span>
+                          <span className="text-sm animate-pulse">🔥</span>
                         ) : (
-                          <div className={`w-2 h-2 rounded-full ${darkMode ? 'bg-neutral-800' : 'bg-gray-200'}`} />
+                          <div className={`w-1.5 h-1.5 rounded-full ${darkMode ? 'bg-neutral-800' : 'bg-gray-200'}`} />
                         )}
                       </div>
+                      <span className={`text-[6px] tracking-tighter ${isCompleted ? 'text-green-500 font-bold' : 'text-neutral-500'}`}>
+                        {isCompleted ? 'DONE' : 'MISSED'}
+                      </span>
                     </button>
                   ))}
                 </div>

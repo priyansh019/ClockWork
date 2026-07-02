@@ -3,7 +3,7 @@ import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 
 dotenv.config();
 
@@ -84,6 +84,11 @@ CRITICAL: Return ONLY valid JSON. Do not write any markdown code fences (like \`
       const response = await ai.models.generateContent({
         model: 'gemini-3.5-flash',
         contents: prompt,
+        config: {
+          thinkingConfig: {
+            thinkingLevel: ThinkingLevel.MINIMAL,
+          },
+        },
       });
 
       const responseText = response.text || '[]';
@@ -141,6 +146,11 @@ Return ONLY the JSON array. Do not wrap in markdown or add explanations.`;
       const response = await ai.models.generateContent({
         model: 'gemini-3.5-flash',
         contents: prompt,
+        config: {
+          thinkingConfig: {
+            thinkingLevel: ThinkingLevel.MINIMAL,
+          },
+        },
       });
 
       const responseText = response.text || '[]';
@@ -185,6 +195,11 @@ Return ONLY valid JSON. No markdown code blocks.`;
       const response = await ai.models.generateContent({
         model: 'gemini-3.5-flash',
         contents: prompt,
+        config: {
+          thinkingConfig: {
+            thinkingLevel: ThinkingLevel.MINIMAL,
+          },
+        },
       });
 
       const responseText = response.text || '{}';
@@ -238,6 +253,11 @@ Return ONLY the JSON array. Do not wrap in markdown or add explanations.`;
       const response = await ai.models.generateContent({
         model: 'gemini-3.5-flash',
         contents: prompt,
+        config: {
+          thinkingConfig: {
+            thinkingLevel: ThinkingLevel.MINIMAL,
+          },
+        },
       });
 
       const responseText = response.text || '[]';
@@ -344,6 +364,11 @@ Return ONLY the JSON. No markdown wrappers.`;
       const response = await ai.models.generateContent({
         model: 'gemini-3.5-flash',
         contents: prompt,
+        config: {
+          thinkingConfig: {
+            thinkingLevel: ThinkingLevel.MINIMAL,
+          },
+        },
       });
 
       const responseText = response.text || '{}';
@@ -439,6 +464,11 @@ Your task is to:
       const response = await ai.models.generateContent({
         model: 'gemini-3.5-flash',
         contents: systemPrompt,
+        config: {
+          thinkingConfig: {
+            thinkingLevel: ThinkingLevel.MINIMAL,
+          },
+        },
       });
 
       res.json({ reply: response.text || "Mind is online.", isFallback: false });

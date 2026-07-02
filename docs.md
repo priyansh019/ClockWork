@@ -129,16 +129,15 @@ Below is a complete guide to each of ClockWork's workspace modules, detailing th
 *   **Calendar Templates**: Professionals can upload template team schedules to kickstart their weeks in one click.
 
 ---
-
-## 10. Gamified Streak Calendar
+## 10. Weekly Streak Tracker
 
 ### Individual Features:
 *   **Visual Streak Multiplier**: Tracks the number of consecutive days you have achieved your custom daily task targets.
-*   **Weekly Flame Identifiers (🔥)**: Celebrates daily consistency with glowing, high-contrast animated indicators on achieved calendar days.
-*   **Gamified Rewards**: Celebratory logs and visual milestones are unlocked on streak updates to reinforce consistency.
+*   **Weekly Day Status Grid**: A beautiful horizontal weekly calendar showing Completed vs. Missed statuses for each day.
+*   **Dynamic Override Toggles**: Direct click triggers to manually flag days as completed or missed, updating your consistency logs dynamically.
 
 ### Practical Uses:
-*   **Habit Loop Construction**: Uses classic gaming mechanics to encourage logging in daily, turning tedious chores into an active habit streak.
+*   **Consistency Tracking**: Promotes high-performance habits by clearly displaying your compliance across the current week.
 
 ---
 
@@ -171,8 +170,8 @@ Below is a complete guide to each of ClockWork's workspace modules, detailing th
 ### Individual Features:
 *   **Dual-Mode Task Progress Bars**: Displays a modern visual tracking indicator directly below each task title in the **Commits** list. Supports dynamic time-elapsed percentage tracking or manual overriding.
 *   **Manual Adjustment Triggers**: Increment or decrement task completion progress manually by 10% with easy, interactive click controls.
-*   **Editable Day-Flow Planner**: Direct in-app text input and clock-time modifications for individual hour-by-hour time blocks. Enables adding new intervals and purging unwanted schedule rows.
+*   **Fully Manageable Day-Flow Planner**: Direct in-app text input, type selectors, and clock-time modifications for individual hour-by-hour time blocks. Features always-visible, easy-to-click Edit and Delete buttons, and header controllers (**Clear All** and **Load Defaults**).
 *   **Interactive Directive Alerts Configurator**: Allows adding and live-modifying alert levels, severity scales, and notice details dynamically in the alerts list.
-*   **General Knowledge Mind AI**: The built-in assistant is now equipped to answer broad educational, coding, or historical questions, complete with robust local heuristic fallbacks when working offline or without active keys.
+*   **Fast General Knowledge Mind AI**: Powered by Google Gemini optimized with `ThinkingLevel.MINIMAL` settings for blazing-fast responses and minimal latency. Answers broad academic, coding, or historical questions, complete with robust local heuristic fallbacks when working offline or without active keys.
 *   **Apple Music Lyric Syncing**: Synchronizes scrolling text blocks smoothly, even during virtual synthesized soundscape sound play loops.
 *   **Secure Sign Out confirmation**: Standard confirm check triggers before logging users out of their active workspace, protecting ongoing focus sessions from accidental navigation.
