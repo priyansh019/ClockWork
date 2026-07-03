@@ -1144,6 +1144,7 @@ export default function App() {
   const [editCategory, setEditCategory] = useState<'student' | 'personal' | 'work'>('student');
   const [editSuccessMsg, setEditSuccessMsg] = useState<string>('');
   const [editErrorMsg, setEditErrorMsg] = useState<string>('');
+  const [personalApiKey, setPersonalApiKey] = useState<string>(() => localStorage.getItem('cw_user_gemini_key') || '');
 
   // Custom Apple-style On-Screen Confirmation Modal and File Attachment states
   const [confirmation, setConfirmation] = useState<{
@@ -2559,6 +2560,193 @@ export default function App() {
     reader.readAsDataURL(file);
   };
 
+  // Client-side Direct Google Gemini API Helper
+  const callGeminiClientSide = async (
+    apiKey: string,
+    message: string,
+    history: ChatMessage[],
+    fileData: any
+  ): Promise<string> => {
+    const systemPrompt = `You are "Mind", the highly intelligent, context-aware AI productivity and workspace companion of ClockWork.
+The user can find, ask, search, and request summaries of anything in their workspace. They can also ask you ANY general questions, academic queries, coding problems, math help, historical facts, professional advice, philosophy, or general doubts.
+
+You are expected to answer general queries and doubts completely, thoroughly, and insightfully, while keeping your elegant, supportive ClockWork companion persona.
+
+If an image or file is attached, study its visual content or text carefully, and answer the user's doubts/questions with high precision!
+
+Here is the current ClockWork Live State (for optional context if they refer to their work):
+- Consistency Streak: ${streak || 0} days
+- High Priority Tasks: ${JSON.stringify(tasks || [], null, 2)}
+- Daily Schedule Blocks: ${JSON.stringify(schedule || [], null, 2)}
+- Quick Capture Stickies: ${JSON.stringify(stickyNotes || [], null, 2)}
+
+Return your response directly as clean text or beautifully styled markdown. Speak clearly, concisely, and with high supportive composure. Answer questions instantly.`;
+
+    const contents: any[] = [];
+
+    // Map history to roles
+    if (history && history.length > 0) {
+      const recentHistory = history.slice(-10);
+      recentHistory.forEach(h => {
+        contents.push({
+          role: h.sender === 'user' ? 'user' : 'model',
+          parts: [{ text: h.text }]
+        });
+      });
+    }
+
+    const activeParts: any[] = [];
+
+    // Add file data if present
+    if (fileData && fileData.base64 && fileData.mimeType) {
+      activeParts.push({
+        inlineData: {
+          mimeType: fileData.mimeType,
+          data: fileData.base64
+        }
+      });
+    }
+
+    activeParts.push({ text: message || "Analyze attached item." });
+
+    contents.push({
+      role: 'user',
+      parts: activeParts
+    });
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        contents: contents,
+        systemInstruction: {
+          parts: [{ text: systemPrompt }]
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Gemini API error: ${response.status} - ${errText}`);
+    }
+
+    const data = await response.json();
+    const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!replyText) {
+      throw new Error('No content returned from Gemini client-side API');
+    }
+
+    return replyText;
+  };
+
+  // Local Offline Heuristic Companion Engine
+  const getLocalHeuristicReply = (message: string): string => {
+    const lower = message.toLowerCase();
+    
+    if (lower.includes('summarize') || lower.includes('summary')) {
+      return `### Daily Momentum Summary 📊
+      
+**Consistency Streak:** 🔥 ${streak || 0} Days
+**Active Tasks:** ${tasks ? tasks.filter(t => !t.completed).length : 0} pending / ${tasks ? tasks.length : 0} total.
+**Sticky Notes Captured:** 📝 ${stickyNotes ? stickyNotes.length : 0} notes.
+
+**Schedule Highlights:**
+${schedule && schedule.length > 0 
+  ? schedule.slice(0, 3).map(s => `- \`[${s.time}]\` ${s.taskTitle} (${s.completed ? 'Completed' : 'Pending'})`).join('\n')
+  : 'No schedule blocks loaded.'}
+
+*To unlock full-scale AI analysis of your day, configure your Gemini API Key in the settings.*`;
+    }
+
+    if (lower.includes('find') || lower.includes('search')) {
+      const matchTasks = (tasks || []).filter(t => lower.includes(t.title.toLowerCase()));
+      const matchStickies = (stickyNotes || []).filter(s => lower.includes(s.content.toLowerCase()));
+      if (matchTasks.length > 0 || matchStickies.length > 0) {
+        return `### Search Results 🔍
+I scoured your workspace and found matches:
+
+${matchTasks.map(t => `- **Task:** ${t.title} (${t.completed ? '✅ Done' : '⏳ Pending'})`).join('\n')}
+${matchStickies.map(s => `- **Sticky Note:** "${s.content}"`).join('\n')}
+
+*Configure your API Key in Settings to enable deep natural language semantic queries.*`;
+      } else {
+        return `### Search Results 🔍
+I couldn't find any exact keyword matches for "${message}" in your active tasks or quick captures.
+
+Try adding the item or typing another query!`;
+      }
+    }
+
+    // General Questions / Doubt Resolution
+    if (lower.includes('photosynthesis')) {
+      return `### Photosynthesis 🍃
+Photosynthesis is the metabolic process by which green plants, algae, and some bacteria synthesize high-energy carbohydrates (such as glucose) from carbon dioxide and water, using solar energy absorbed by chlorophyll.
+
+**Equation:**
+$$\\text{6CO}_2 + \\text{6H}_2\\text{O} + \\text{light} \\rightarrow \\text{C}_6\\text{H}_{12}\\text{O}_6 + \\text{6O}_2$$
+
+*To explore deeper visual or biochemical models, configure your Gemini API Key in Settings!*`;
+    }
+
+    if (lower.includes('react') || lower.includes('vue') || lower.includes('framework') || lower.includes('javascript') || lower.includes('code')) {
+      return `### Modern Web Architecture ⚡
+Modern web frameworks like React utilize a component-driven, declarative architecture:
+
+1. **Virtual DOM:** React tracks changes on a lightweight memory tree and batches updates before drawing on the browser screen, ensuring high performance.
+2. **State Management:** Data flows downward (unidirectional) to keep renders predictable.
+3. **SPA Routing:** Renders different views dynamically without triggering heavy full-page reloads.
+
+*For code compilation, debugging, or custom code generation, configure your Gemini API Key in Settings!*`;
+    }
+
+    if (lower.includes('joke') || lower.includes('humor')) {
+      return `### A Dev Joke For You ☕
+> Why did the database administrator walk out of the restaurant?
+> Because they had a table join conflict!
+
+*Configure your Gemini API Key to enjoy unlimited contextual jokes.*`;
+    }
+
+    if (lower.includes('procrastination') || lower.includes('focus') || lower.includes('productivity') || lower.includes('motivation')) {
+      return `### Beating Procrastination 🎯
+Executive dysfunction is completely normal. Here are scientific techniques to break the cycle:
+
+- **The 5-Minute Rule:** Commit to starting the task for just five minutes. Often, starting is the hardest part; momentum takes care of the rest.
+- **Micro-Commitments:** Break large projects down into atomic tasks under 15 minutes each.
+- **Time Boxing:** Work in clean intervals (e.g. 25-minute Pomodoros) and step away during break blocks.
+
+Let's check your first high priority task now and start together!`;
+    }
+
+    if (lower.includes('hello') || lower.includes('hi ') || lower.includes('greetings')) {
+      return `### Greetings from Mind AI! 👋
+I am **Mind**, your ClockWork productivity companion. 
+
+How can I keep your momentum high today?
+- Ask to **"summarize"** your schedule or priorities.
+- Request to **"find [keyword]"** to search your workspace.
+- Ask me general doubts about science, math, or coding.
+
+*To activate my dynamic generative capabilities, you can enter your Gemini API Key in the Settings panel!*`;
+    }
+
+    // Fallback
+    return `### Workspace Companion Response 🧠
+You asked: "${message}"
+
+I am currently running in **Offline / Local Heuristic Mode** since the workspace connection to the server was bypassed (this is normal when hosting on static platforms like Vercel).
+
+**What would you like to do?**
+1. **Analyze Schedule:** Ask me to "summarize" or "find" items in your current workspace list.
+2. **Setup Gemini API:** Add your own Gemini API Key in the Settings sidebar panel. Once entered, I will instantly connect to Google's cloud server to provide complete general-knowledge responses, image analysis, and document summaries!
+
+Let's stay focused on your day-flow commitments!`;
+  };
+
   const handleSendMessage = async (e?: FormEvent) => {
     if (e) e.preventDefault();
     if (!chatInput.trim() && !attachedFile) return;
@@ -2579,6 +2767,7 @@ export default function App() {
     const fileToSend = attachedFile;
 
     try {
+      // 1. Try server-side Express API endpoint first
       const response = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2596,6 +2785,11 @@ export default function App() {
           } : null
         })
       });
+
+      if (!response.ok) {
+        throw new Error(`Server returned status: ${response.status}`);
+      }
+
       const data = await response.json();
       const mindMessage: ChatMessage = {
         sender: 'mind',
@@ -2604,18 +2798,63 @@ export default function App() {
       };
       setChatMessages(prev => [...prev, mindMessage]);
       setAttachedFile(null);
-      addLog('Mind responded.');
+      addLog('Mind responded via workspace server.');
     } catch (err) {
-      console.error(err);
-      addLog('Companion chat network issue.');
-      setChatMessages(prev => [
-        ...prev,
-        {
-          sender: 'mind',
-          text: "I encountered a workspace connection issue, but let's stay focused. Your active commitments are always safely cached locally.",
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      console.warn("Express endpoint failed or unavailable. Initiating client-side fallback query...", err);
+      
+      // Determine if a client-side API Key is configured
+      const activeApiKey = personalApiKey.trim() || (import.meta as any).env.VITE_GEMINI_API_KEY || '';
+
+      if (activeApiKey) {
+        try {
+          addLog('Querying Gemini directly from browser via client key...');
+          const reply = await callGeminiClientSide(
+            activeApiKey,
+            userMessage.text,
+            chatMessages,
+            fileToSend ? {
+              base64: fileToSend.base64,
+              mimeType: fileToSend.mimeType,
+              name: fileToSend.name
+            } : null
+          );
+
+          const mindMessage: ChatMessage = {
+            sender: 'mind',
+            text: reply,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+          setChatMessages(prev => [...prev, mindMessage]);
+          setAttachedFile(null);
+          addLog('Mind responded directly via client Gemini.');
+        } catch (clientErr) {
+          console.error("Client key query also failed:", clientErr);
+          addLog('Client-side query issue. Loading intelligent heuristic.');
+          
+          // Fall back to local heuristic response
+          const localReply = getLocalHeuristicReply(userMessage.text);
+          setChatMessages(prev => [
+            ...prev,
+            {
+              sender: 'mind',
+              text: localReply,
+              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }
+          ]);
         }
-      ]);
+      } else {
+        // No client-side key configured, execute high-quality local heuristic matching
+        addLog('No API Key configured. Running local heuristic engine.');
+        const localReply = getLocalHeuristicReply(userMessage.text);
+        setChatMessages(prev => [
+          ...prev,
+          {
+            sender: 'mind',
+            text: localReply,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }
+        ]);
+      }
     } finally {
       setChatLoading(false);
     }
@@ -7218,6 +7457,28 @@ export default function App() {
                             />
                           </div>
                         )}
+                      </div>
+
+                      {/* Personal API Key Field for Static/Vercel Fallback */}
+                      <div className="pt-2">
+                        <label className="block uppercase text-[10px] opacity-75 mb-1.5 flex items-center gap-1.5">
+                          🔑 Personal Gemini API Key (Optional Fallback for Vercel)
+                        </label>
+                        <input
+                          type="password"
+                          value={personalApiKey}
+                          onChange={(e) => {
+                            setPersonalApiKey(e.target.value);
+                            localStorage.setItem('cw_user_gemini_key', e.target.value);
+                          }}
+                          placeholder="AIzaSy... (Bypasses server endpoints to enable browser-direct AI)"
+                          className={`w-full px-3 py-2 border focus:outline-none ${
+                            darkMode ? 'bg-neutral-900 border-neutral-800 text-white focus:border-[#D95D39]' : 'bg-white border-[#1A1A1A] text-black focus:border-[#D95D39]'
+                          }`}
+                        />
+                        <span className="text-[9px] text-neutral-400 font-serif italic mt-1 block">
+                          On static servers or serverless environments like Vercel, providing your own key runs Mind AI directly and securely inside your browser!
+                        </span>
                       </div>
 
                       <div className="pt-2">
