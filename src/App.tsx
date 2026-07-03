@@ -1145,6 +1145,28 @@ export default function App() {
   const [editSuccessMsg, setEditSuccessMsg] = useState<string>('');
   const [editErrorMsg, setEditErrorMsg] = useState<string>('');
 
+  // Custom Apple-style On-Screen Confirmation Modal and File Attachment states
+  const [confirmation, setConfirmation] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    style?: 'danger' | 'warning' | 'info';
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
+  const [attachedFile, setAttachedFile] = useState<{
+    name: string;
+    base64: string;
+    mimeType: string;
+  } | null>(null);
+
   // Sync edit profile inputs whenever currentUser changes
   useEffect(() => {
     if (currentUser) {
@@ -1179,6 +1201,18 @@ export default function App() {
     return saved ? parseInt(saved, 10) : 12;
   });
 
+  const [schedule, setSchedule] = useState<ScheduleSlot[]>(() => {
+    const saved = localStorage.getItem('cw_schedule');
+    if (saved) return JSON.parse(saved);
+    return [
+      { time: '09:00 - 10:00', taskTitle: 'Morning Sync & Focus Block', type: 'focus', completed: false },
+      { time: '10:00 - 12:00', taskTitle: 'Primary Project Execution', type: 'focus', completed: false },
+      { time: '12:00 - 13:00', taskTitle: 'Recharge & Outbox Sweeping', type: 'admin', completed: false },
+      { time: '13:00 - 14:00', taskTitle: 'Midday Strategy Recharge', type: 'break', completed: true },
+      { time: '14:00 - 15:30', taskTitle: 'Secondary Task Execution', type: 'focus', completed: false },
+    ];
+  });
+
   // Small week calendar completion states (Duolingo style)
   const [completedDays, setCompletedDays] = useState<Record<string, boolean>>(() => {
     const saved = localStorage.getItem('cw_completed_days');
@@ -1193,17 +1227,47 @@ export default function App() {
     };
   });
 
-  const [schedule, setSchedule] = useState<ScheduleSlot[]>(() => {
-    const saved = localStorage.getItem('cw_schedule');
-    if (saved) return JSON.parse(saved);
-    return [
-      { time: '09:00 - 10:00', taskTitle: 'Morning Sync & Focus Block', type: 'focus', completed: false },
-      { time: '10:00 - 12:00', taskTitle: 'Primary Project Execution', type: 'focus', completed: false },
-      { time: '12:00 - 13:00', taskTitle: 'Recharge & Outbox Sweeping', type: 'admin', completed: false },
-      { time: '13:00 - 14:00', taskTitle: 'Midday Strategy Recharge', type: 'break', completed: true },
-      { time: '14:00 - 15:30', taskTitle: 'Secondary Task Execution', type: 'focus', completed: false },
-    ];
-  });
+  // 1. Auto-update today's status in completedDays based on task/schedule completion
+  useEffect(() => {
+    const daysMap: Record<number, string> = {
+      0: 'Sun', 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat'
+    };
+    const todayName = daysMap[new Date().getDay()];
+    
+    const hasCompletedTask = tasks.some(t => t.completed);
+    const hasCompletedSchedule = schedule.some(s => s.completed);
+    const isTodayCompleted = hasCompletedTask || hasCompletedSchedule;
+
+    if (completedDays[todayName] !== isTodayCompleted) {
+      setCompletedDays(prev => {
+        const next = { ...prev, [todayName]: isTodayCompleted };
+        localStorage.setItem('cw_completed_days', JSON.stringify(next));
+        return next;
+      });
+    }
+  }, [tasks, schedule]);
+
+  // 2. Auto-recalculate streak whenever completedDays changes
+  useEffect(() => {
+    const order = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    let currentStreak = 0;
+    let maxStreak = 0;
+    for (const day of order) {
+      if (completedDays[day]) {
+        currentStreak++;
+        if (currentStreak > maxStreak) {
+          maxStreak = currentStreak;
+        }
+      } else {
+        currentStreak = 0;
+      }
+    }
+    const calculatedStreak = 10 + maxStreak; // base 10 + consecutive completed days
+    if (streak !== calculatedStreak) {
+      setStreak(calculatedStreak);
+      localStorage.setItem('cw_streak', calculatedStreak.toString());
+    }
+  }, [completedDays, streak]);
 
   const [alerts, setAlerts] = useState<AlertItem[]>(() => {
     const saved = localStorage.getItem('cw_alerts');
@@ -2251,13 +2315,21 @@ export default function App() {
   };
 
   const handleSignOut = () => {
-    if (confirm("Are you sure you want to sign out from your ClockWork workspace?")) {
-      localStorage.removeItem('cw_user');
-      setCurrentUser(null);
-      setAuthEmail('');
-      setAuthPassword('');
-      addLog('Logged out from workspace.');
-    }
+    setConfirmation({
+      isOpen: true,
+      title: 'Sign Out',
+      message: 'Are you sure you want to sign out from your ClockWork workspace?',
+      confirmText: 'Sign Out',
+      cancelText: 'Cancel',
+      style: 'danger',
+      onConfirm: () => {
+        localStorage.removeItem('cw_user');
+        setCurrentUser(null);
+        setAuthEmail('');
+        setAuthPassword('');
+        addLog('Logged out from workspace.');
+      }
+    });
   };
 
   // --- SPEECH SERVICES ---
@@ -2462,13 +2534,39 @@ export default function App() {
   };
 
   // --- "MIND" COMPANION CHAT CONTROLLER ---
+  const handleChatFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      addLog("File is too large. Please select a file under 10MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const resultStr = reader.result as string;
+      const commaIdx = resultStr.indexOf(',');
+      const base64 = commaIdx > -1 ? resultStr.substring(commaIdx + 1) : resultStr;
+      
+      setAttachedFile({
+        name: file.name,
+        base64: base64,
+        mimeType: file.type || 'application/octet-stream',
+      });
+      addLog(`Attached: ${file.name} for Mind analysis.`);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSendMessage = async (e?: FormEvent) => {
     if (e) e.preventDefault();
-    if (!chatInput.trim()) return;
+    if (!chatInput.trim() && !attachedFile) return;
 
+    const fileLabel = attachedFile ? ` [File: ${attachedFile.name}]` : '';
     const userMessage: ChatMessage = {
       sender: 'user',
-      text: chatInput.trim(),
+      text: chatInput.trim() + fileLabel,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
@@ -2476,6 +2574,9 @@ export default function App() {
     setChatInput('');
     setChatLoading(true);
     addLog('Querying companion brain "Mind"...');
+
+    // Keep reference to clear attached file
+    const fileToSend = attachedFile;
 
     try {
       const response = await fetch('/api/ai/chat', {
@@ -2487,7 +2588,12 @@ export default function App() {
           tasks,
           stickyNotes,
           schedule,
-          streak
+          streak,
+          fileData: fileToSend ? {
+            base64: fileToSend.base64,
+            mimeType: fileToSend.mimeType,
+            name: fileToSend.name
+          } : null
         })
       });
       const data = await response.json();
@@ -2497,6 +2603,7 @@ export default function App() {
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setChatMessages(prev => [...prev, mindMessage]);
+      setAttachedFile(null);
       addLog('Mind responded.');
     } catch (err) {
       console.error(err);
@@ -2848,22 +2955,30 @@ export default function App() {
   };
 
   const clearWorkspace = () => {
-    if (confirm('Are you sure you want to clear your local workspace cache?')) {
-      setTasks([]);
-      setStickyNotes([]);
-      setStreak(0);
-      setSchedule([]);
-      setTimetableItems([]);
-      setExcelPreview([]);
-      setChatMessages([
-        {
-          sender: 'mind',
-          text: "Workspace flushed. Tell me what you need to build next or configure.",
-          time: '12:00'
-        }
-      ]);
-      addLog('Workspace cleared.');
-    }
+    setConfirmation({
+      isOpen: true,
+      title: 'Clear Workspace Cache',
+      message: 'Are you sure you want to clear your local workspace cache? This will reset all your active tasks, sessions, sticky notes, streaks, and day-flow schedules.',
+      confirmText: 'Clear Cache',
+      cancelText: 'Cancel',
+      style: 'danger',
+      onConfirm: () => {
+        setTasks([]);
+        setStickyNotes([]);
+        setStreak(0);
+        setSchedule([]);
+        setTimetableItems([]);
+        setExcelPreview([]);
+        setChatMessages([
+          {
+            sender: 'mind',
+            text: "Workspace flushed. Tell me what you need to build next or configure.",
+            time: '12:00'
+          }
+        ]);
+        addLog('Workspace cleared.');
+      }
+    });
   };
 
   const getSystemDateString = () => {
@@ -4502,11 +4617,19 @@ export default function App() {
                           <button
                             type="button"
                             onClick={() => {
-                              if (confirm(`Delete alert: "${alert.type}"?`)) {
-                                const updated = alerts.filter((_, idx) => idx !== index);
-                                setAlerts(updated);
-                                addLog(`Deleted alert: "${alert.type}"`);
-                              }
+                              setConfirmation({
+                                isOpen: true,
+                                title: 'Delete Directive Alert',
+                                message: `Are you sure you want to delete the directive alert: "${alert.type}"?`,
+                                confirmText: 'Delete Alert',
+                                cancelText: 'Cancel',
+                                style: 'danger',
+                                onConfirm: () => {
+                                  const updated = alerts.filter((_, idx) => idx !== index);
+                                  setAlerts(updated);
+                                  addLog(`Deleted alert: "${alert.type}"`);
+                                }
+                              });
                             }}
                             className="text-neutral-400 hover:text-red-500 p-0.5 transition-colors cursor-pointer"
                             title="Delete Alert"
@@ -7394,11 +7517,45 @@ export default function App() {
                 )}
               </div>
 
+              {/* Attached file preview if any */}
+              {attachedFile && (
+                <div className="flex items-center justify-between p-1.5 mb-2 border border-[#D95D39]/30 bg-[#D95D39]/5 text-[9px] font-mono rounded">
+                  <span className="truncate text-neutral-400">
+                    Attached: <strong className="text-[#D95D39]">{attachedFile.name}</strong> ({attachedFile.mimeType})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setAttachedFile(null)}
+                    className="text-red-500 hover:text-red-700 font-bold px-1.5 py-0.5 rounded cursor-pointer hover:bg-red-500/10 border-none bg-transparent"
+                    title="Remove attachment"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
               {/* Chat Input */}
               <form onSubmit={handleSendMessage} className="flex gap-2">
                 <input
+                  type="file"
+                  id="chat-file-input"
+                  className="hidden"
+                  onChange={handleChatFileChange}
+                  accept="image/*,text/*,application/json,application/pdf"
+                />
+                <button
+                  type="button"
+                  onClick={() => document.getElementById('chat-file-input')?.click()}
+                  className={`px-2.5 border hover:bg-neutral-500/10 flex items-center justify-center transition-colors shrink-0 bg-transparent cursor-pointer ${
+                    darkMode ? 'border-neutral-800 text-neutral-400 hover:text-[#D95D39]' : 'border-gray-300 text-gray-500 hover:text-[#D95D39]'
+                  }`}
+                  title="Attach file or image"
+                >
+                  <Upload size={13} />
+                </button>
+                <input
                   type="text"
-                  placeholder="Find 'Slide Deck' or Summarize..."
+                  placeholder="Ask a doubt, search files, or analyze images..."
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
                   className={`flex-1 border px-2.5 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[#D95D39] ${
@@ -7408,7 +7565,7 @@ export default function App() {
                 <button
                   type="submit"
                   disabled={chatLoading}
-                  className="px-3 bg-[#D95D39] hover:bg-[#c44e2e] text-white text-xs font-mono uppercase flex items-center justify-center transition-colors disabled:opacity-50"
+                  className="px-3 bg-[#D95D39] hover:bg-[#c44e2e] text-white text-xs font-mono uppercase flex items-center justify-center transition-colors disabled:opacity-50 shrink-0 cursor-pointer"
                 >
                   <Send size={12} />
                 </button>
@@ -7645,6 +7802,54 @@ export default function App() {
             >
               Return to Active Companion
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Apple-styled On-screen Confirmation Dialog (iOS/macOS-inspired dialog) */}
+      {confirmation.isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className={`w-full max-w-xs rounded-2xl border p-5 shadow-2xl flex flex-col items-center text-center animate-scale-up ${
+            darkMode ? 'bg-[#1c1c1e] border-neutral-800 text-[#FDFCFB]' : 'bg-[#f4f4f7] border-gray-200 text-black'
+          }`}>
+            {/* Elegant warning icon */}
+            <div className={`w-11 h-11 rounded-full flex items-center justify-center mb-3 ${
+              confirmation.style === 'danger' 
+                ? 'bg-red-500/10 text-red-500' 
+                : 'bg-amber-500/10 text-amber-500'
+            }`}>
+              <AlertCircle size={22} />
+            </div>
+
+            <h3 className="font-sans font-bold text-sm leading-snug mb-1 tracking-tight">
+              {confirmation.title}
+            </h3>
+            
+            <p className="font-sans text-[11px] text-neutral-400 leading-normal mb-5 px-1">
+              {confirmation.message}
+            </p>
+
+            <div className="flex flex-col w-full divide-y divide-neutral-200 dark:divide-neutral-800 border-t border-neutral-200 dark:border-neutral-800">
+              <button
+                type="button"
+                onClick={() => {
+                  confirmation.onConfirm();
+                  setConfirmation(prev => ({ ...prev, isOpen: false }));
+                }}
+                className={`py-2.5 w-full font-sans text-xs font-bold hover:bg-neutral-500/5 transition-colors cursor-pointer border-none bg-transparent ${
+                  confirmation.style === 'danger' ? 'text-red-500' : 'text-[#D95D39]'
+                }`}
+              >
+                {confirmation.confirmText || 'Confirm'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmation(prev => ({ ...prev, isOpen: false }))}
+                className="py-2.5 w-full font-sans text-xs text-neutral-400 font-medium hover:bg-neutral-500/5 transition-colors cursor-pointer border-none bg-transparent"
+              >
+                {confirmation.cancelText || 'Cancel'}
+              </button>
+            </div>
           </div>
         </div>
       )}

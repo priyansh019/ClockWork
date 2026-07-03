@@ -393,7 +393,7 @@ Return ONLY the JSON. No markdown wrappers.`;
   // API 6: "Mind" Context-Aware Companion Chat, Search, Summarize, and Find
   app.post('/api/ai/chat', async (req, res) => {
     try {
-      const { message, history, tasks, stickyNotes, schedule, streak } = req.body;
+      const { message, history, tasks, stickyNotes, schedule, streak, fileData } = req.body;
 
       const ai = getGeminiAI();
       if (!ai) {
@@ -433,14 +433,12 @@ Here is a high-level cognitive response: When studying or working on "${message.
         return res.json({ reply, isFallback: true });
       }
 
-      const conversationHistory = (history || [])
-        .map((h: any) => `${h.sender === 'user' ? 'User' : 'Mind'}: ${h.text}`)
-        .join('\n');
+      const systemPrompt = `You are "Mind", the highly intelligent, context-aware AI productivity and workspace companion of ClockWork.
+The user can find, ask, search, and request summaries of anything in their workspace. They can also ask you ANY general questions, academic queries, coding problems, math help, historical facts, professional advice, philosophy, or general doubts.
 
-      const systemPrompt = `You are "Mind", the highly intelligent, context-aware AI productivity companion of ClockWork.
-The user can find, ask, search, and request summaries of anything in their workspace. They can also ask you ANY general questions, academic queries, coding problems, professional/business advice, philosophy, or general knowledge.
+You are expected to answer general queries and doubts completely, thoroughly, and insightfully, while keeping your elegant, supportive ClockWork companion persona.
 
-You have full capability and are encouraged to answer general queries comprehensively and intelligently, while keeping your elegant, supportive ClockWork companion persona.
+If an image or file is attached, study its visual content or text carefully, and answer the user's doubts/questions with high precision!
 
 Here is the current ClockWork Live State (for optional context if they refer to their work):
 - Consistency Streak: ${streak || 0} days
@@ -448,23 +446,46 @@ Here is the current ClockWork Live State (for optional context if they refer to 
 - Daily Schedule Blocks: ${JSON.stringify(schedule || [], null, 2)}
 - Quick Capture Stickies: ${JSON.stringify(stickyNotes || [], null, 2)}
 
-Recent Conversation History:
-${conversationHistory}
+Return your response directly as clean text or beautifully styled markdown. Speak clearly, concisely, and with high supportive composure. Answer questions instantly.`;
 
-User's Query: "${message}"
+      // Build standard role-based chat contents to support conversation history and multimodal inputs
+      const contents: any[] = [];
 
-Your task is to:
-1. Provide a highly precise, helpful, and motivating response.
-2. If the user asks a general question, answer it completely, thoroughly, and insightfully.
-3. If the user asks to "summarize" their schedule/workspace, give them a beautiful, scannable overview of their status and momentum.
-4. If they ask to "find" or "search" for something in their workspace, scour the provided tasks, schedule, and stickies, and point out matches specifically.
-5. Keep the tone sophisticated, supportive, clear, and action-oriented (consistent with ClockWork's Editorial aesthetic). 
-6. Return your response directly as clean text or markdown. Keep your answer elegant and directly focused on their request.`;
+      if (history && history.length > 0) {
+        // Keep the last 12 messages of history to preserve context while ensuring fast inference
+        const recentHistory = history.slice(-12);
+        recentHistory.forEach((h: any) => {
+          contents.push({
+            role: h.sender === 'user' ? 'user' : 'model',
+            parts: [{ text: h.text }]
+          });
+        });
+      }
 
+      // Prepare the active parts of the current query
+      const activeParts: any[] = [{ text: message || "Analyze attached item." }];
+
+      // Include inline base64 data for image and document analysis if present
+      if (fileData && fileData.base64 && fileData.mimeType) {
+        activeParts.push({
+          inlineData: {
+            mimeType: fileData.mimeType,
+            data: fileData.base64
+          }
+        });
+      }
+
+      contents.push({
+        role: 'user',
+        parts: activeParts
+      });
+
+      // Execute request with minimal latency settings
       const response = await ai.models.generateContent({
         model: 'gemini-3.5-flash',
-        contents: systemPrompt,
+        contents: contents,
         config: {
+          systemInstruction: systemPrompt,
           thinkingConfig: {
             thinkingLevel: ThinkingLevel.MINIMAL,
           },
